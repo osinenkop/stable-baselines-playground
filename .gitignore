@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Archives
+.zip
+
+# virtuanev
+blenv/
+
 # Distribution / packaging
 .Python
 build/
