@@ -5,7 +5,7 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from gymnasium.wrappers import TimeLimit
-from mygymnaisum.my_pendulum import PendulumRenderFix
+from mygym.my_pendulum import PendulumRenderFix
 # Import the custom callback from callback.py
 from callback.plotting_callback import PlottingCallback
 
@@ -14,7 +14,7 @@ matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="mygymnaisum.my_pendulum:PendulumRenderFix",
+    entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
 # Use your custom environment for training
