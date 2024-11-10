@@ -14,7 +14,7 @@ matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="env.my_pendulum:PendulumRenderFix",
+    entry_point="gymenv.my_pendulum:PendulumRenderFix",
 )
 
 # Use your custom environment for training
