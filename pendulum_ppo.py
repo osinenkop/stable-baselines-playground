@@ -8,6 +8,7 @@ from gymnasium.wrappers import TimeLimit
 from mygym.my_pendulum import PendulumRenderFix
 # Import the custom callback from callback.py
 from callback.plotting_callback import PlottingCallback
+from stable_baselines3.common.utils import get_linear_fn
 
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
@@ -20,16 +21,19 @@ gym.envs.registration.register(
 # Use your custom environment for training
 env = gym.make("PendulumRenderFix-v0")
 
-env = TimeLimit(env, max_episode_steps=8192)  # Set a maximum number of steps per episode
+env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+
+total_timesteps = 500000
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
-    "learning_rate": 5e-6,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 4096,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 256,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
-    "gae_lambda": 0.95,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
+    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
 }
 
 # More detailed explanation:
@@ -58,7 +62,7 @@ model = PPO(
 plotting_callback = PlottingCallback()
 
 # Train the model with the callback
-model.learn(total_timesteps=10e6, callback=plotting_callback)
+model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
 
 # Close the plot after training
 plt.ioff()  # Turn off interactive mode
