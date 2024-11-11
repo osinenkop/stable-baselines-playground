@@ -143,25 +143,48 @@ class PendulumRenderFix(gym.Env):
             self.render()
         return self._get_obs(), -costs, False, False, {}
 
+    # def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+    #     super().reset(seed=seed)
+    #     if options is None:
+    #         high = np.array([DEFAULT_X, DEFAULT_Y])
+    #     else:
+    #         # Note that if you use custom reset bounds, it may lead to out-of-bound
+    #         # state/observations.
+    #         x = options.get("x_init") if "x_init" in options else DEFAULT_X
+    #         y = options.get("y_init") if "y_init" in options else DEFAULT_Y
+    #         x = utils.verify_number_and_cast(x)
+    #         y = utils.verify_number_and_cast(y)
+    #         high = np.array([x, y])
+    #     low = -high  # We enforce symmetric limits.
+    #     self.state = self.np_random.uniform(low=low, high=high)
+    #     self.last_u = None
+
+    #     if self.render_mode == "human":
+    #         self.render()
+    #     return self._get_obs(), {}
+
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
-        if options is None:
-            high = np.array([DEFAULT_X, DEFAULT_Y])
-        else:
-            # Note that if you use custom reset bounds, it may lead to out-of-bound
-            # state/observations.
-            x = options.get("x_init") if "x_init" in options else DEFAULT_X
-            y = options.get("y_init") if "y_init" in options else DEFAULT_Y
-            x = utils.verify_number_and_cast(x)
-            y = utils.verify_number_and_cast(y)
-            high = np.array([x, y])
-        low = -high  # We enforce symmetric limits.
-        self.state = self.np_random.uniform(low=low, high=high)
+        
+        # Use fixed initial state by default
+        fixed_angle = np.pi/2  # Angle = π radians (pendulum pointing straight down)
+        fixed_angular_velocity = 0.0  # No initial angular velocity
+
+        # If options are provided, use custom values
+        if options is not None:
+            fixed_angle = options.get("angle", fixed_angle)
+            fixed_angular_velocity = options.get("angular_velocity", fixed_angular_velocity)
+
+        # Set the state directly
+        self.state = np.array([fixed_angle, fixed_angular_velocity])
         self.last_u = None
 
         if self.render_mode == "human":
             self.render()
+        
+        # Return the initial observation and an empty dictionary for info
         return self._get_obs(), {}
+
 
     def _get_obs(self):
         theta, thetadot = self.state
