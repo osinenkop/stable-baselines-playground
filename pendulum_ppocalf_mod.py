@@ -142,56 +142,33 @@ class calfq():
             pass
 
 class calfq_filter():
-    def __init__(self, replacing_probability = 0.5, last_good_Q_value = None):
-
+    def __init__(self, mu = 0.2, replacing_probability = 0.8, best_policy = None):
         self.replacing_probability = replacing_probability
+        self.policy_update = True
+        self.mu = mu
+        self.best_policy = best_policy
+        self.nominal_policy = EnergyBasedController()
 
-        self.best_policy = None
-        self.last_good_Q_value = None
-        self.nu = 0.4 #1e-5
-        print("CALFQ Filter init")
-
-    def init_policy(self, policy):
+    def update(self, policy):
         self.best_policy = deepcopy(policy)
+        self.policy_update = True
 
-    def sampling_time_init(self, sampling_time):
-        self.sampling_time = sampling_time
-        self.nu = self.nu * sampling_time
-
-    def value_reset(self): ...
-        # self.last_good_Q_value = None
-    
-    def get_last_good_model(self):
-        # print(self.last_good_Q_value)
-        return self.best_policy
-
-    # def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
-    #     print(last_good_Q_value)
-    #     # if (last_good_Q_value) == None or ((last_good_Q_value - Q_value) >= (self.nu)) or (np.random.random()<=self.replacing_probability):
-    #     # if (last_good_Q_value) == None or ((last_good_Q_value > Q_value)):
-    #     if ( Q_value - last_good_Q_value) >= (self.nu):
-
-    #         new_action, _, _ = self.best_policy(obs_tensor)
-    #         if (np.random.random()<=self.replacing_probability):
-    #             return action
-    #         return new_action
-    #     else:
-    #         self.last_good_Q_value = Q_value
-    #         self.best_policy = deepcopy(current_policy)
-    #         return action
-
-    def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
-        print(last_good_Q_value)
-        # if (last_good_Q_value) == None or ((last_good_Q_value - Q_value) >= (self.nu)) or (np.random.random()<=self.replacing_probability):
-        # if (last_good_Q_value) == None or ((last_good_Q_value > Q_value)):
-        if ( Q_value - last_good_Q_value) >= (self.nu):
-
-            self.last_good_Q_value = Q_value
-            self.best_policy = deepcopy(current_policy)
-            new_action, _, _ = self.best_policy(obs_tensor)
-            return new_action
-        if (np.random.random()<=self.replacing_probability):
-            return action
+    def pass_or_replace(self, action, obs, Q_value_best, Q_value, obs_tensor):
+        # I could be wrong but the value function should be realated to model class so you could use self.
+        # If critic is improving save the value function in self.best_Q_value and return action
+        # else change action with some probability
+        if (Q_value_best[-1].cpu().detach().numpy()[-1] - Q_value[-1].cpu().detach().numpy()[-1]) > self.mu:
+            self.policy_update = False
+            if np.random.random() <= self.replacing_probability:
+                cos_theta, _, angular_velocity = obs
+                new_action = self.nominal_policy.compute(cos_theta,angular_velocity)
+                # # new_action = self.best_policy.compute(cos_theta,angular_velocity)
+                # new_action, values, log_probs = self.best_policy(obs_tensor)
+                # new_action = new_action.cpu().detach().numpy()
+                # new_action = new_action.squeeze()
+                new_action = [np.clip([new_action], -2, 2)]
+                return new_action
+        
         return action
 
 def collect_rollouts(
@@ -226,8 +203,8 @@ def collect_rollouts(
 
         callback.on_rollout_start()
 
-        self.policy = calf_filter.get_last_good_model()
-        calf_filter.value_reset()
+        # self.policy = calf_filter.get_last_good_model()
+        # calf_filter.value_reset()
 
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
@@ -256,30 +233,22 @@ def collect_rollouts(
 
             # TODO Add CaLF here
             
-            clipped_actions = self.calf_filter.compute_action(clipped_actions, self._last_obs[-1], 
+            clipped_actions = self.calf_filter.pass_or_replace(clipped_actions, self._last_obs[-1], 
                                                                self.calf_filter.best_policy.predict_values(obs_tensor), 
                                                                self.policy.predict_values(obs_tensor),
-                                                               self.policy,
                                                                obs_tensor)
-            
-            if isinstance(clipped_actions, torch.Tensor):
-                clipped_actions = clipped_actions.cpu().detach().numpy()
-            else:
-                clipped_actions = np.array(clipped_actions)
-
-            clipped_actions = np.clip(clipped_actions, self.action_space.low, self.action_space.high)
-
             # TODO Update CaLF foreach episode
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
-            # if dones[-1] is True:
-            #     if self.calf_filter.policy_update is True:
-            #         self.calf_filter.update(self.policy)
-            #     else:
-            #         self.calf_filter.policy_update = True
-            #         print("Policy Updated")
+            if dones[-1]:
+                if self.calf_filter.policy_update is True:
+                    self.calf_filter.update(self.policy)
+                # else:
+                self.calf_filter.policy_update = True
+                print("Policy Updated")
 
             self.num_timesteps += env.num_envs
+
             # Give access to local variables
             callback.update_locals(locals())
             if not callback.on_step():
@@ -431,7 +400,7 @@ ppo_hyperparams = {
 
 
 calf_filter = calfq_filter()
-calf_filter.sampling_time_init(dt)
+# calf_filter.sampling_time_init(dt)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -457,7 +426,8 @@ if not args.notrain:
 
     model.policy.to(device)
 
-    model.calf_filter.init_policy(model.policy)
+    model.calf_filter.update(model.policy)
+    # model.calf_filter.init_policy(model.policy)
     # Create the plotting callback
     plotting_callback = PlottingCallback()
 
