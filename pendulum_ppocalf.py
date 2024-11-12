@@ -181,10 +181,10 @@ class calfq_filter():
     #         return action
 
     def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
-        print(last_good_Q_value)
+        # print(last_good_Q_value)
         # if (last_good_Q_value) == None or ((last_good_Q_value - Q_value) >= (self.nu)) or (np.random.random()<=self.replacing_probability):
         # if (last_good_Q_value) == None or ((last_good_Q_value > Q_value)):
-        if ( Q_value - last_good_Q_value) >= (self.nu):
+        if ( Q_value - last_good_Q_value ) >= (self.nu):
 
             self.last_good_Q_value = Q_value
             self.best_policy = deepcopy(current_policy)
@@ -192,6 +192,8 @@ class calfq_filter():
             return new_action
         if (np.random.random()<=self.replacing_probability):
             return action
+        
+        action, _, _ = self.best_policy(obs_tensor)
         return action
 
 def collect_rollouts(
