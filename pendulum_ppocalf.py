@@ -47,7 +47,7 @@ class style():
     RESET = '\033[0m'
 
 class calfq_filter():
-    def __init__(self, replacing_probability = 0.2, best_value_local = None):
+    def __init__(self, replacing_probability = 0.5, best_value_local = None):
 
         self.replacing_probability = replacing_probability
 
