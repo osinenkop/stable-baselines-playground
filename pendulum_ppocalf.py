@@ -1,6 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import gymnasium as gym
+# import gym
 import argparse
 import numpy as np
 import time
@@ -9,6 +10,8 @@ import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from gymnasium.wrappers import TimeLimit
+#! from gym.wrappers import TimeLimit
+
 from mygym.my_pendulum import PendulumRenderFix
 # Import the custom callback from callback.py
 from callback.plotting_callback import PlottingCallback
@@ -22,17 +25,50 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecEnv
 
+from stable_baselines3.common.env_util import make_atari_env
+from stable_baselines3 import A2C
+
 from copy import deepcopy
 
 from gymnasium import spaces
+#! from gym import spaces
+
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 
 import math
 
+from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.vec_env import DummyVecEnv
+from gymnasium import Wrapper
+#! from gym import Wrapper
+
+
 SelfOnPolicyAlgorithm = TypeVar("SelfOnPolicyAlgorithm", bound="OnPolicyAlgorithm")
 
 
+# def make_env(env_id, seed):
+#     def _init():
+#         env = gym.make(env_id)
+#         env.seed(seed)  # Устанавливаем seed для среды
+#         return env
+#     return _init
+
+# class CustomVecFrameStack(VecFrameStack):
+#     def reset(self, **kwargs):
+#         kwargs.pop("seed", None)  # Удаляем аргумент seed, если он есть
+#         return super().reset(**kwargs)
+    
+# class SingleReturnResetWrapper(Wrapper):
+#     def reset(self, **kwargs):
+#         obs, _ = super().reset(**kwargs)
+#         return obs  # Возвращаем только наблюдения
+
+# class CustomDummyVecEnv(DummyVecEnv):
+#     def reset(self, **kwargs):
+#         # Удаляем аргумент "seed", если он передан
+#         kwargs.pop("seed", None)
+#         return super().reset(**kwargs)
 
 class style():
     BLACK = '\033[30m'
@@ -55,7 +91,7 @@ class calfq_filter():
         self.best_value_local = -math.inf
         self.best_value_global = -math.inf
         self.nu = 0.01 #1e-5
-        self.calf_filter_delay = 20
+        self.calf_filter_delay = 5
         print("CALFQ Filter init")
 
     def init_policy(self, policy):
@@ -92,6 +128,7 @@ class calfq_filter():
                        best_value_local, Q_value, 
                        current_policy, obs_tensor,
                        iteration):
+        
         self.iteration = iteration
         # print(style.RED, Q_value, style.RESET)
         # print(style.CYAN, best_value_local, style.RESET)
@@ -312,29 +349,26 @@ def learn(
         return self
 
 
+# environment_name = "ATARI"
+environment_name = "PENDULUM"
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
 parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
+parser.add_argument("--atari", action="store_true", help="Run atari env")
+parser.add_argument("--pendulum", action="store_true", help="Run pendulum env")
+
 
 # Parse the arguments
 args = parser.parse_args()
-
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
-
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
-
 # Use your custom environment for training
-env = gym.make("PendulumRenderFix-v0")
-
-env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-
 dt = 0.05  # Action time step for the simulation
-
 total_timesteps = 500000
 
 # Define the hyperparameters for PPO
@@ -348,20 +382,35 @@ ppo_hyperparams = {
     "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
 }
 
-# More detailed explanation:
-#
-# learning_rate: Controls how quickly or slowly the model updates its parameters. A very low value, like 1e-6, results in slow learning, which can sometimes prevent instability.
-# n_steps: Determines how many steps of experience are collected before updating the policy. A larger n_steps provides more data for each update but requires more memory and computation.
-# batch_size: The number of samples used to compute each gradient update. It affects the variance of the gradient estimate and the stability of learning.
-# gamma: The discount factor, which defines how future rewards are weighted relative to immediate rewards. A high value (close to 1) makes the agent focus on long-term rewards.
-# gae_lambda: A parameter used in the Generalized Advantage Estimation (GAE) method, which helps reduce variance in the advantage estimates. It controls the trade-off between bias and variance.
-# clip_range: The range within which the policy is clipped to prevent overly large updates, ensuring more stable training.
-
-
 calf_filter = calfq_filter()
 calf_filter.sampling_time_init(dt)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+if environment_name == "ATARI":
+
+    env = make_atari_env("Pong-v4", n_envs=4) # ATARI
+    # env = VecFrameStack(env, n_stack=4) # ATARI
+    # env = SingleReturnResetWrapper(env)
+    # env = CustomVecFrameStack(env, n_stack=4) # ATARI
+    # env = CustomDummyVecEnv([lambda: env])
+
+    env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+
+if environment_name == "PENDULUM":
+    env = gym.make("PendulumRenderFix-v0") # PENDULUM ENV
+    env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+    '''
+    More detailed explanation:
+
+    learning_rate: Controls how quickly or slowly the model updates its parameters. A very low value, like 1e-6, results in slow learning, which can sometimes prevent instability.
+    n_steps: Determines how many steps of experience are collected before updating the policy. A larger n_steps provides more data for each update but requires more memory and computation.
+    batch_size: The number of samples used to compute each gradient update. It affects the variance of the gradient estimate and the stability of learning.
+    gamma: The discount factor, which defines how future rewards are weighted relative to immediate rewards. A high value (close to 1) makes the agent focus on long-term rewards.
+    gae_lambda: A parameter used in the Generalized Advantage Estimation (GAE) method, which helps reduce variance in the advantage estimates. It controls the trade-off between bias and variance.
+    clip_range: The range within which the policy is clipped to prevent overly large updates, ensuring more stable training.
+    '''
+
 
 # Check if the --notrain flag is provided
 if not args.notrain:
@@ -395,44 +444,27 @@ if not args.notrain:
     model.save("ppo_pendulum_modi_2")
     # Close the plot after training
     plt.ioff()  # Turn off interactive mode
-    # plt.show()  # Show the final plot
-    # plt.close("all")   
 else:
     print("Skipping training phase...")
 
 # ====Evaluation: animated plot to show trained agent's performance
-
 # Now enable rendering with pygame for testing
 import pygame
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
-
 # Load the model (if needed)
 model = PPO.load("ppo_pendulum_modi_2")
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 model.policy.to(device)
 print(style.RED, device, style.RESET)
 
 # Reset the environment
-# obs, _ = env.reset()
 obs, _ = env.reset(options={"angle": np.pi, "angular_velocity": 1.0})
-cos_theta, sin_theta, angular_velocity = obs
+# cos_theta, sin_theta, angular_velocity = obs
 
 # Initial critic value (expand dims to simulate batch input)
 obs_tensor = torch.tensor(np.array([obs]), dtype=torch.float32).to(device)
 
-# last_good_value = model.policy.predict_values(obs_tensor)
-# last_good_model = model
-# last_good_action, _ = model.predict(obs)
-# print(last_good_action)
-# last_good_action = np.clip(last_good_action, -2.0, 2.0)
-
 # Initialize total reward
 total_reward = 0.0
-
-# Run the simulation and render it
-dt = 0.05  # Time step for the simulation
 
 # Initialize pygame and set the display size
 pygame.init()
@@ -442,7 +474,7 @@ for step in range(500):
 
     # Generate the action from the agent model
     agent_action, _ = model.predict(obs)
-    agent_action = np.clip(agent_action, -2.0, 2.0)  # Clip to the valid range
+    #! agent_action = np.clip(agent_action, -2.0, 2.0)  # Clip to the valid range PENDULUM
 
     # Convert the current observation to a PyTorch tensor
     #! obs_tensor = torch.tensor([obs], dtype=torch.float32)
@@ -450,50 +482,15 @@ for step in range(500):
 
     current_value = model.policy.predict_values(obs_tensor)
 
-    # action = calfq_filter.compute_action(agent_action,
-    #                                      last_good_value,
-    #                                      current_value
-    #                                      )
-###############################################################
-    # # Evaluate the current state using the critic
-    # current_value = model.policy.predict_values(obs_tensor)
-    # # print("AIOSDASFASF", model.policy.state_dict("mlp_extractor.policy_net.2.weight"))
-    # # print(model.policy) "mlp_extractor.policy_net.2.weight"
-    # ppo_weights = model.policy.mlp_extractor.policy_net[2].weight
-    # ppo_weights_numpy = ppo_weights.detach().cpu().numpy()
-    # print(ppo_weights_numpy.size)
-    # print(obs)
-    # print(agent_action)
-    # new_action = calf_filter.pass_or_replace(agent_action, np.array(obs), ppo_weights_numpy)
-###############################################################
-
-    # print(style.YELLOW, "Curren value: {} vs LG value: {}".format(current_value, last_good_value), style.RESET)
-    # # Compare the critic values to decide which action to use
-    # if current_value > last_good_value:
-    #     # Use the agent's action if the critic value has improved
-    #     action = agent_action
-    #     last_good_action = action 
-    #     # Update the previous value for the next iteration
-    #     last_good_value = current_value
-    # else:
-    #     # Otherwise, fallback to the energy-based controller's action
-    #     action = last_good_action
-    #     # action = agent_action
-
-    action = agent_action
-
-    print(style.RED, action, style.RESET)
-
-    # !DEBUG
-    # action = control_action
-    # !DEBUG
+    print(style.RED, agent_action, style.RESET)
 
     # Step the environment using the selected action
-    obs, reward, done, _, _ = env.step(action)
-    env.render()
+    obs, reward, done, _, _ = env.step(agent_action)
+    #! env.render() # PENDULUM  
+    env.render("human")
 
     # Update the observation
-    cos_theta, sin_theta, angular_velocity = obs
+    # cos_theta, sin_theta, angular_velocity = obs
 
     # Update the total reward
     total_reward += reward
