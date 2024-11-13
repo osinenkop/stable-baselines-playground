@@ -16,15 +16,16 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 
 # Global parameters
 total_timesteps=65536
-episode_timesteps=256
-image_height=32
-image_width=32
+episode_timesteps=512
+image_height=64
+image_width=64
 save_model_every_steps=8192
+parallel_envs=4
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 32,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "n_steps": 128,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
     "batch_size": 128,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
@@ -50,10 +51,10 @@ if __name__ == "__main__":
         return _init
 
     # Create a DummyVecEnv with 4 parallel environments
-    env = DummyVecEnv([make_env(seed) for seed in range(4)])
+    # env = DummyVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
     # Use SubprocVecEnv to run environments in parallel
-    env = SubprocVecEnv([make_env(seed) for seed in range(4)])
+    env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
     # env = VecTransposeImage(env)  # Transpose image observations for PyTorch
 
