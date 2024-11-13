@@ -245,7 +245,19 @@ class PendulumRenderFix(gym.Env):
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
 
+
     def obs_generator(self, initial = False):
+
+        def rotate_images(image, angle):
+            # Image rotation function  
+            height, width = image.shape[:2]
+
+            center = (width / 2, height / 2)
+            
+            M = cv2.getRotationMatrix2D(center, angle, 1)
+            img = cv2.warpAffine(image, M, (width, height))
+            return img   
+        
         img = cv2.cvtColor(self.render(), cv2.COLOR_BGR2GRAY)
 
         if initial:
@@ -255,6 +267,11 @@ class PendulumRenderFix(gym.Env):
             self.observation = cv2.merge([img, self.old_observation])
             self.old_observation = img
 
+        self.observation = rotate_images(self.observation, +90)
+
+        # cv2.imshow( "123", self.observation[:,:,0])
+        # cv2.waitKey(-1)
+        # cv2.destroyAllWindows()
         return self.observation
 
     def close(self):

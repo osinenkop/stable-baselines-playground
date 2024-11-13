@@ -28,8 +28,11 @@ from gymnasium import spaces
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 
+import math
 
 SelfOnPolicyAlgorithm = TypeVar("SelfOnPolicyAlgorithm", bound="OnPolicyAlgorithm")
+
+
 
 class style():
     BLACK = '\033[30m'
@@ -43,113 +46,15 @@ class style():
     UNDERLINE = '\033[4m'
     RESET = '\033[0m'
 
-class calfq():
-    def __init__(self, replacing_probability = 0.5, best_Q_value = None):
-
-        self.critic_struct = 'quad-mix'
-        self.observation_target = []
-
-
-        self.replacing_probability = replacing_probability
-        self.best_Q_value = best_Q_value
-
-        self.best_policy = None
-
-
-        self.action_LG = []
-        self.observation_LG = []
-        self.w_critic_LG = []
-
-        self.nu = 1e-5
-        
-
-    def first_lg_init(self, action, observation, w_critic):
-        self.action_LG = action
-        self.observation_LG = observation
-        self.w_critic_LG = w_critic
-
-    def sampling_time_init(self, sampling_time):
-        self.sampling_time = sampling_time
-        self.nu = self.nu * sampling_time
-
-    def _critic(self, observation, action, w_critic):
-        """
-        Critic a.k.a. objective learner: a routine that models something related to the objective, e.g., value function, Q-function, advantage etc.
-        
-        Currently, this implementation is for linearly parametrized models.
-
-        """
-        def uptria2vec(mat):
-            """
-            Convert upper triangular square sub-matrix to column vector.
-            
-            """    
-            n = mat.shape[0]
-            
-            vec = np.zeros( (int(n*(n+1)/2)) )
-            
-            k = 0
-            for i in range(n):
-                for j in range(i, n):
-                    vec[k] = mat[i, j]
-                    k += 1
-                    
-            return vec
-
-        if self.observation_target == []:
-            chi = np.concatenate([observation, action])
-        else:
-            chi = np.concatenate([observation - self.observation_target, action])
-        
-        # regressor_critic = np.concatenate([uptria2vec( np.outer(chi**2, chi**2) ), uptria2vec( np.outer(chi**2, chi) ), uptria2vec( np.outer(chi, chi) )])
-        # print(regressor_critic.size)
-
-        if self.critic_struct == 'quad-lin':
-            regressor_critic = np.concatenate([ uptria2vec( np.outer(chi, chi) ), chi ])
-        elif self.critic_struct == 'quadratic':
-            regressor_critic = np.concatenate([ uptria2vec( np.outer(chi, chi) ) ])   
-        elif self.critic_struct == 'quad-nomix':
-            regressor_critic = chi * chi
-        elif self.critic_struct == 'quad-mix':
-            regressor_critic = np.concatenate([ observation**2, np.kron(observation, action), action**2 ]) 
-        elif self.critic_struct == 'poly3':
-            regressor_critic = np.concatenate([uptria2vec( np.outer(chi**2, chi) ), uptria2vec( np.outer(chi, chi) )])
-        elif self.critic_struct == 'poly4':               
-            regressor_critic = np.concatenate([uptria2vec( np.outer(chi**2, chi**2) ), 
-                                               uptria2vec( np.outer(chi**2, chi) ), 
-                                               uptria2vec( np.outer(chi, chi) )])
-
-        return w_critic @ regressor_critic
-
-    def CALF_constr(self, action, observation, w_critic):
-        critic_new = self._critic(observation, action, w_critic)                            # Q^w (x_k, u_k)
-        critic_LG = self._critic(self.observation_LG, self.action_LG, self.w_critic_LG)     # Q^w°(x°, u°)
-        return critic_new - critic_LG                                                       # Q^w (x_k, u_k) - Q^w°(x°, u°)
-
-    def pass_or_replace(self, action, observation, w_critic):
-
-        if self.action_LG == []:
-            self.first_lg_init(action, observation, w_critic)
-
-        res = self.CALF_constr(action, observation, w_critic)
-
-        if res < (-self.nu):
-            new_action = action
-            self.w_critic_LG = w_critic
-            self.observation_LG = observation
-            self.action_LG = action
-        else:
-            pass
-
 class calfq_filter():
     def __init__(self, replacing_probability = 0.5, best_value_local = None):
 
         self.replacing_probability = replacing_probability
 
         self.best_policy = None
-        self.best_value_local = -999999999999
-        self.best_value_global = -999999999999
-        self.nu = 0.4 #1e-5
+        self.best_value_local = -math.inf
+        self.best_value_global = -math.inf
+        self.nu = 0.01 #1e-5
         print("CALFQ Filter init")
 
     def init_policy(self, policy):
@@ -158,9 +63,10 @@ class calfq_filter():
 
     
     def update_global_policy(self):
-        print("Best_value_global = ", self.best_value_global)
+        print(style.CYAN, "Best_value_global = ", self.best_value_global, style.RESET)
         print("Best_value_local = ",self.best_value_local )
-        if (self.best_value_global == None) or (self.best_value_global < self.best_value_local):
+        # if (self.best_value_global == -math.inf) or (self.best_value_global < self.best_value_local):
+        if (self.best_value_global == -math.inf) or ((self.best_value_local - self.best_value_global) >= (self.nu)):
             self.best_policy_global = deepcopy(self.best_policy)
             self.best_value_global = self.best_value_local
             print(style.RED, "Global best policy updated", style.RESET)
@@ -181,10 +87,12 @@ class calfq_filter():
         return 0
 
     def compute_action(self, action, observation, best_value_local, Q_value, current_policy, obs_tensor):
-        # print(best_value_local)
-        if ( Q_value - best_value_local ) >= (self.nu):
-        # if (best_value_local - Q_value) >= (self.nu):
-            print(style.RED, "Constraints applied", style.RESET)
+        # print(style.RED, Q_value, style.RESET)
+        # print(style.CYAN, best_value_local, style.RESET)
+
+        if best_value_local <= Q_value:
+        # if ( Q_value - best_value_local ) >= (self.nu):
+            # print(style.RED, "Best_value_local updated", style.RESET)
             self.best_value_local = Q_value
             self.best_policy = deepcopy(current_policy)
             return action
@@ -209,8 +117,6 @@ class calfq_filter():
     #     action, _, _ = self.best_policy(obs_tensor)
     #     return action
     
-
-
 def collect_rollouts(
         self,
         env: VecEnv,
@@ -275,7 +181,7 @@ def collect_rollouts(
             # TODO Add CaLF here
             
             clipped_actions = self.calf_filter.compute_action(clipped_actions, self._last_obs[-1], 
-                                                               self.calf_filter.best_policy.predict_values(obs_tensor), 
+                                                               self.calf_filter.best_policy_global.predict_values(obs_tensor), 
                                                                self.policy.predict_values(obs_tensor),
                                                                self.policy,
                                                                obs_tensor)
@@ -416,18 +322,7 @@ env = gym.make("PendulumRenderFix-v0")
 
 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
 
-# ---------------------------------
-# Initialize the PID controller
-kp = 5.0  # Proportional gain
-ki = 0.1   # Integral gain
-kd = 1.0   # Derivative gain
-pid = PIDController(kp, ki, kd, setpoint=0.0)  # Setpoint is the upright position (angle = 0)
-
 dt = 0.05  # Action time step for the simulation
-# ---------------------------------
-# Initialize the energy-based controller
-controller = EnergyBasedController()
-# ---------------------------------
 
 total_timesteps = 500000
 
@@ -455,7 +350,6 @@ ppo_hyperparams = {
 calf_filter = calfq_filter()
 calf_filter.sampling_time_init(dt)
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Check if the --notrain flag is provided
@@ -463,7 +357,7 @@ if not args.notrain:
 
     PPO.calf_filter = calf_filter
     PPO.collect_rollouts = collect_rollouts
-    PPO.learn = learn
+    # PPO.learn = learn
     # Create the PPO model with the specified hyperparameters
     model = PPO(
         "MlpPolicy",
@@ -534,9 +428,6 @@ pygame.init()
 # screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
 
 for step in range(500):
-    # Compute the control action using the energy-based controller
-    control_action = controller.compute(cos_theta, angular_velocity)
-    control_action = np.clip([control_action], -2.0, 2.0)
 
     # Generate the action from the agent model
     agent_action, _ = model.predict(obs)
