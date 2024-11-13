@@ -47,7 +47,7 @@ class style():
     RESET = '\033[0m'
 
 class calfq_filter():
-    def __init__(self, replacing_probability = 0.5, best_value_local = None):
+    def __init__(self, replacing_probability = 0.2, best_value_local = None):
 
         self.replacing_probability = replacing_probability
 
@@ -86,22 +86,27 @@ class calfq_filter():
     def update_flag(self):
         return 0
 
-    def compute_action(self, action, observation, best_value_local, Q_value, current_policy, obs_tensor):
+    def compute_action(self, action, observation, 
+                       best_value_local, Q_value, 
+                       current_policy, obs_tensor,
+                       iteration):
         # print(style.RED, Q_value, style.RESET)
         # print(style.CYAN, best_value_local, style.RESET)
-
-        if best_value_local <= Q_value:
-        # if ( Q_value - best_value_local ) >= (self.nu):
-            # print(style.RED, "Best_value_local updated", style.RESET)
-            self.best_value_local = Q_value
-            self.best_policy = deepcopy(current_policy)
+        if iteration < 20:
             return action
-        if (np.random.random()<=self.replacing_probability):
-            # print(style.CYAN, "Constraints failed... Probability of relax applied", style.RESET)
+        else:
+            if best_value_local <= Q_value:
+            # if ( Q_value - best_value_local ) >= (self.nu):
+                # print(style.RED, "Best_value_local updated", style.RESET)
+                self.best_value_local = Q_value
+                self.best_policy = deepcopy(current_policy)
+                return action
+            if (np.random.random()<=self.replacing_probability):
+                # print(style.CYAN, "Constraints failed... Probability of relax applied", style.RESET)
+                return action
+            # print(style.CYAN, "Constraints failed... Global best policy applied", style.RESET)
+            action, _, _ = self.best_policy_global(obs_tensor)
             return action
-        # print(style.CYAN, "Constraints failed... Global best policy applied", style.RESET)
-        action, _, _ = self.best_policy_global(obs_tensor)
-        return action
     
     # def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
     #     # print(last_good_Q_value)
@@ -123,6 +128,7 @@ def collect_rollouts(
         callback: BaseCallback,
         rollout_buffer: RolloutBuffer,
         n_rollout_steps: int,
+        iteration: int,
     ) -> bool:
         """
         Collect experiences using the current policy and fill a ``RolloutBuffer``.
@@ -142,6 +148,7 @@ def collect_rollouts(
         self.policy.set_training_mode(False)
 
         n_steps = 0
+        print("Iteration", iteration)
         rollout_buffer.reset()
         # Sample new weights for the state dependent exploration
         if self.use_sde:
@@ -184,7 +191,8 @@ def collect_rollouts(
                                                                self.calf_filter.best_policy_global.predict_values(obs_tensor), 
                                                                self.policy.predict_values(obs_tensor),
                                                                self.policy,
-                                                               obs_tensor)
+                                                               obs_tensor,
+                                                               iteration)
             
             if isinstance(clipped_actions, torch.Tensor):
                 clipped_actions = clipped_actions.cpu().detach().numpy()
@@ -280,8 +288,8 @@ def learn(
         assert self.env is not None
 
         while self.num_timesteps < total_timesteps:
-            print(self.num_timesteps)
-            continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+            # print(self.num_timesteps)
+            continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps, iteration=iteration)
 
             if not continue_training:
                 break
@@ -357,7 +365,7 @@ if not args.notrain:
 
     PPO.calf_filter = calf_filter
     PPO.collect_rollouts = collect_rollouts
-    # PPO.learn = learn
+    PPO.learn = learn
     # Create the PPO model with the specified hyperparameters
     model = PPO(
         "MlpPolicy",
@@ -381,7 +389,7 @@ if not args.notrain:
     print("Training the model...")
     model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     # Save the model after training
-    model.save("ppo_pendulum_modi_1")
+    model.save("ppo_pendulum_modi_2")
     # Close the plot after training
     plt.ioff()  # Turn off interactive mode
     # plt.show()  # Show the final plot
@@ -396,7 +404,7 @@ import pygame
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
 # Load the model (if needed)
-model = PPO.load("ppo_pendulum_modi_1")
+model = PPO.load("ppo_pendulum_modi_2")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
