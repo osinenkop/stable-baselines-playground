@@ -63,15 +63,16 @@ class calfq_filter():
 
     
     def update_global_policy(self):
-        print(style.CYAN, "Best_value_global = ", self.best_value_global, style.RESET)
-        print("Best_value_local = ",self.best_value_local )
-        # if (self.best_value_global == -math.inf) or (self.best_value_global < self.best_value_local):
-        if (self.best_value_global == -math.inf) or ((self.best_value_local - self.best_value_global) >= (self.nu)):
-            self.best_policy_global = deepcopy(self.best_policy)
-            self.best_value_global = self.best_value_local
-            print(style.RED, "Global best policy updated", style.RESET)
-        else:
+        if self.iteration < 20:
             pass
+        else:
+            print(style.CYAN, "Best_value_global = ", self.best_value_global, style.RESET)
+            print("Best_value_local = ",self.best_value_local )
+            # if (self.best_value_global == -math.inf) or (self.best_value_global < self.best_value_local):
+            if (self.best_value_global == -math.inf) or ((self.best_value_local - self.best_value_global) >= (self.nu)):
+                self.best_policy_global = deepcopy(self.best_policy)
+                self.best_value_global = self.best_value_local
+                print(style.RED, "Global best policy updated", style.RESET)
 
     def sampling_time_init(self, sampling_time):
         self.sampling_time = sampling_time
@@ -90,6 +91,7 @@ class calfq_filter():
                        best_value_local, Q_value, 
                        current_policy, obs_tensor,
                        iteration):
+        self.iteration = iteration
         # print(style.RED, Q_value, style.RESET)
         # print(style.CYAN, best_value_local, style.RESET)
         if iteration < 20:
