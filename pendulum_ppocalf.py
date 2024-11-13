@@ -142,59 +142,74 @@ class calfq():
             pass
 
 class calfq_filter():
-    def __init__(self, replacing_probability = 0.5, last_good_Q_value = None):
+    def __init__(self, replacing_probability = 0.5, best_value_local = None):
 
         self.replacing_probability = replacing_probability
 
         self.best_policy = None
-        self.last_good_Q_value = None
+        self.best_value_local = -999999999999
+        self.best_value_global = -999999999999
         self.nu = 0.4 #1e-5
         print("CALFQ Filter init")
 
     def init_policy(self, policy):
+        self.best_policy_global = deepcopy(policy)
         self.best_policy = deepcopy(policy)
+
+    
+    def update_global_policy(self):
+        print("Best_value_global = ", self.best_value_global)
+        print("Best_value_local = ",self.best_value_local )
+        if (self.best_value_global == None) or (self.best_value_global < self.best_value_local):
+            self.best_policy_global = deepcopy(self.best_policy)
+            self.best_value_global = self.best_value_local
+            print(style.RED, "Global best policy updated", style.RESET)
+        else:
+            pass
 
     def sampling_time_init(self, sampling_time):
         self.sampling_time = sampling_time
         self.nu = self.nu * sampling_time
 
     def value_reset(self): ...
-        # self.last_good_Q_value = None
+        # self.best_value_local = None
     
     def get_last_good_model(self):
-        # print(self.last_good_Q_value)
-        return self.best_policy
+        return self.best_policy_global
+    
+    def update_flag(self):
+        return 0
 
+    def compute_action(self, action, observation, best_value_local, Q_value, current_policy, obs_tensor):
+        # print(best_value_local)
+        if ( Q_value - best_value_local ) >= (self.nu):
+        # if (best_value_local - Q_value) >= (self.nu):
+            print(style.RED, "Constraints applied", style.RESET)
+            self.best_value_local = Q_value
+            self.best_policy = deepcopy(current_policy)
+            return action
+        if (np.random.random()<=self.replacing_probability):
+            # print(style.CYAN, "Constraints failed... Probability of relax applied", style.RESET)
+            return action
+        # print(style.CYAN, "Constraints failed... Global best policy applied", style.RESET)
+        action, _, _ = self.best_policy_global(obs_tensor)
+        return action
+    
     # def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
-    #     print(last_good_Q_value)
-    #     # if (last_good_Q_value) == None or ((last_good_Q_value - Q_value) >= (self.nu)) or (np.random.random()<=self.replacing_probability):
-    #     # if (last_good_Q_value) == None or ((last_good_Q_value > Q_value)):
-    #     if ( Q_value - last_good_Q_value) >= (self.nu):
+    #     # print(last_good_Q_value)
+    #     if ( Q_value - last_good_Q_value ) >= (self.nu):
 
-    #         new_action, _, _ = self.best_policy(obs_tensor)
-    #         if (np.random.random()<=self.replacing_probability):
-    #             return action
-    #         return new_action
-    #     else:
     #         self.last_good_Q_value = Q_value
     #         self.best_policy = deepcopy(current_policy)
+    #         new_action, _, _ = self.best_policy(obs_tensor)
+    #         return new_action
+    #     if (np.random.random()<=self.replacing_probability):
     #         return action
-
-    def compute_action(self, action, observation, last_good_Q_value, Q_value, current_policy, obs_tensor):
-        # print(last_good_Q_value)
-        # if (last_good_Q_value) == None or ((last_good_Q_value - Q_value) >= (self.nu)) or (np.random.random()<=self.replacing_probability):
-        # if (last_good_Q_value) == None or ((last_good_Q_value > Q_value)):
-        if ( Q_value - last_good_Q_value ) >= (self.nu):
-
-            self.last_good_Q_value = Q_value
-            self.best_policy = deepcopy(current_policy)
-            new_action, _, _ = self.best_policy(obs_tensor)
-            return new_action
-        if (np.random.random()<=self.replacing_probability):
-            return action
         
-        action, _, _ = self.best_policy(obs_tensor)
-        return action
+    #     action, _, _ = self.best_policy(obs_tensor)
+    #     return action
+    
+
 
 def collect_rollouts(
         self,
@@ -229,6 +244,7 @@ def collect_rollouts(
         callback.on_rollout_start()
 
         self.policy = calf_filter.get_last_good_model()
+        print(style.YELLOW, self.policy.mlp_extractor.policy_net[2].weight, style.RESET)
         calf_filter.value_reset()
 
         while n_steps < n_rollout_steps:
@@ -274,12 +290,13 @@ def collect_rollouts(
             # TODO Update CaLF foreach episode
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
-            # if dones[-1] is True:
-            #     if self.calf_filter.policy_update is True:
-            #         self.calf_filter.update(self.policy)
-            #     else:
-            #         self.calf_filter.policy_update = True
-            #         print("Policy Updated")
+            if dones[-1]:
+                self.calf_filter.update_global_policy()
+                # if self.calf_filter.policy_update is True:
+                #     self.calf_filter.update(self.policy)
+                # else:
+                #     self.calf_filter.policy_update = True
+                #     print("Policy Updated")
 
             self.num_timesteps += env.num_envs
             # Give access to local variables
@@ -321,6 +338,9 @@ def collect_rollouts(
         with torch.no_grad():
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
+
+        
+        print(style.BLUE, calf_filter.get_last_good_model().mlp_extractor.policy_net[2].weight, style.RESET)
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
@@ -467,7 +487,7 @@ if not args.notrain:
     print("Training the model...")
     model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     # Save the model after training
-    model.save("ppo_pendulum")
+    model.save("ppo_pendulum_modi_1")
     # Close the plot after training
     plt.ioff()  # Turn off interactive mode
     # plt.show()  # Show the final plot
@@ -482,7 +502,7 @@ import pygame
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
 # Load the model (if needed)
-model = PPO.load("ppo_pendulum")
+model = PPO.load("ppo_pendulum_modi_1")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -497,11 +517,11 @@ cos_theta, sin_theta, angular_velocity = obs
 # Initial critic value (expand dims to simulate batch input)
 obs_tensor = torch.tensor(np.array([obs]), dtype=torch.float32).to(device)
 
-last_good_value = model.policy.predict_values(obs_tensor)
-last_good_model = model
-last_good_action, _ = model.predict(obs)
-print(last_good_action)
-last_good_action = np.clip(last_good_action, -2.0, 2.0)
+# last_good_value = model.policy.predict_values(obs_tensor)
+# last_good_model = model
+# last_good_action, _ = model.predict(obs)
+# print(last_good_action)
+# last_good_action = np.clip(last_good_action, -2.0, 2.0)
 
 # Initialize total reward
 total_reward = 0.0
@@ -545,18 +565,20 @@ for step in range(500):
     # new_action = calf_filter.pass_or_replace(agent_action, np.array(obs), ppo_weights_numpy)
 ###############################################################
 
-    print(style.YELLOW, "Curren value: {} vs LG value: {}".format(current_value, last_good_value), style.RESET)
-    # Compare the critic values to decide which action to use
-    if current_value > last_good_value:
-        # Use the agent's action if the critic value has improved
-        action = agent_action
-        last_good_action = action 
-        # Update the previous value for the next iteration
-        last_good_value = current_value
-    else:
-        # Otherwise, fallback to the energy-based controller's action
-        action = last_good_action
-        # action = agent_action
+    # print(style.YELLOW, "Curren value: {} vs LG value: {}".format(current_value, last_good_value), style.RESET)
+    # # Compare the critic values to decide which action to use
+    # if current_value > last_good_value:
+    #     # Use the agent's action if the critic value has improved
+    #     action = agent_action
+    #     last_good_action = action 
+    #     # Update the previous value for the next iteration
+    #     last_good_value = current_value
+    # else:
+    #     # Otherwise, fallback to the energy-based controller's action
+    #     action = last_good_action
+    #     # action = agent_action
+
+    action = agent_action
 
     print(style.RED, action, style.RESET)
 
