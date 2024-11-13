@@ -5,7 +5,7 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
 class PlottingCallback(BaseCallback):
-    def __init__(self, update_interval=1000, verbose=0):
+    def __init__(self, update_every_episodes=1, verbose=0):
 
         # print("DEBUG: PLOT: INIT")
 
@@ -13,7 +13,7 @@ class PlottingCallback(BaseCallback):
         self.steps = []  # List to store step numbers
 
         super(PlottingCallback, self).__init__(verbose)
-        self.update_interval = update_interval
+        self.update_every_episodes = update_every_episodes
         self.episode_rewards = []  # List to store rewards for each episode
         self.episodes = []  # List to store episode numbers
         self.current_episode_reward = 0  # Accumulator for the current episode reward
@@ -44,8 +44,8 @@ class PlottingCallback(BaseCallback):
                 self.episodes.append(len(self.episodes) + 1)
                 self.current_episode_reward = 0  # Reset for the next episode
 
-                # Only update the plot every `update_interval` episodes
-                if len(self.episodes) % self.update_interval == 0:
+                # Only update the plot every `update_every_episodes` episodes
+                if len(self.episodes) % self.update_every_episodes == 0:
                     self.line.set_xdata(self.episodes)
                     self.line.set_ydata(self.episode_rewards)
                     self.ax.relim()

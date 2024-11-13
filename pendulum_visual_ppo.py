@@ -15,11 +15,22 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 
 # Global parameters
-total_timesteps=100000
-episode_timesteps=1000
+total_timesteps=65536
+episode_timesteps=256
 image_height=32
 image_width=32
-save_model_every_steps=10000
+save_model_every_steps=8192
+
+# Define the hyperparameters for PPO
+ppo_hyperparams = {
+    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 32,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 128,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
+    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
+}
 
 if __name__ == "__main__":
 
@@ -55,17 +66,6 @@ if __name__ == "__main__":
         save_path="./checkpoints",  # Directory to save the model
         name_prefix="ppo_visual_pendulum"
     )
-
-    # Define the hyperparameters for PPO
-    ppo_hyperparams = {
-        "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-        "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-        "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-        "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
-        "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-        "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
-    }
 
     # DEBUG
     obs = env.reset()
