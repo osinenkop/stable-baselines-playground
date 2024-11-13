@@ -9,7 +9,7 @@ class CustomCNN(nn.Module):
         assert len(observation_space.shape) == 3, "Observation space must be an image (H, W, C)"
         
         # Correctly extract the number of channels
-        n_input_channels = observation_space.shape[2]  # Use shape[2] for the number of channels
+        n_input_channels = observation_space.shape[0]  # Use shape[0] for the number of channels
         print("n_input_channels =", n_input_channels)  # Debug print to verify
 
         self.cnn = nn.Sequential(
