@@ -1,23 +1,33 @@
-import torch
+import torch as th
 import numpy as np
 import matplotlib.pyplot as plt
+from gymnasium import spaces  # Import spaces from gymnasium
 from model.cnn import CustomCNN
-from mygym.my_pendulum import PendulumVisual  # Ensure the import path is correct
+from mygym.my_pendulum import PendulumVisual 
+from mygym.my_pendulum import ResizeObservation 
 
 # Initialize the custom Pendulum environment
+image_height=50
+image_width=50
 env = PendulumVisual()
+
+# Wrap the environment to resize the observations
+env = ResizeObservation(env, (image_height, image_width))
 
 # Reset the environment and get the initial image
 image, _ = env.reset()
 
 # Print the original image shape to confirm it
 print("Original image shape:", image.shape)
-print("Should be (500, 500, 3)")
+print(f"Should be ({image_height}, {image_width}, 3)")
 
-# Convert the image to a PyTorch tensor, permute the dimensions, and add a batch dimension
-image_tensor = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0)  # Shape: (1, 3, 500, 500)
+# Convert the image to a PyTorch tensor, permute the dimensions to CHW, and add a batch dimension
+image_tensor = th.tensor(image, dtype=th.float32).permute(2, 0, 1).unsqueeze(0)  # Shape: (1, 3, image_height, image_width)
 print("Permuted image tensor shape:", image_tensor.shape)
-print("Should be (1, 3, 500, 500)")
+print(f"Should be (1, 3, {image_height}, {image_width})")
+
+# Update the observation space to match (3, image_height, image_width) for compatibility
+env.observation_space = spaces.Box(low=0, high=255, shape=(3, image_height, image_width), dtype=np.uint8)
 
 # Initialize the CNN
 cnn = CustomCNN(env.observation_space)

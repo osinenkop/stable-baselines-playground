@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Test Visual Pendulum CNN",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "test.test_visual_pendulum_cnn",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Pendulum Visual PPO",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/pendulum_visual_ppo.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Custom Script",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/path/to/your_script.py",
+      "console": "integratedTerminal",
+      "args": ["--some-arg", "value"]  // Optional arguments
+    }
+  ]
+}

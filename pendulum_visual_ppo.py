@@ -8,26 +8,58 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from model.cnn import CustomCNN
 from mygym.my_pendulum import PendulumVisual
 from callback.plotting_callback import PlottingCallback  # Import your existing callback
+from stable_baselines3.common.utils import get_linear_fn
+from gymnasium.wrappers import TimeLimit
+from mygym.my_pendulum import ResizeObservation 
+
+# Global parameters
+total_timesteps=500000
+episode_timesteps=1000
+image_height=50
+image_width=50
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
 args = parser.parse_args()
 
-# Initialize the custom Pendulum environment
-env = PendulumVisual()
+# Function to create the environment and set the seed
+def make_env(seed):
+    def _init():
+        env = PendulumVisual()
+        env = TimeLimit(env, max_episode_steps=episode_timesteps)  # Set a maximum number of steps per episode
+        env = ResizeObservation(env, (image_height, image_width))  # Resize the observation
+        # env = VecTransposeImage(env)  # Transpose image observations for PyTorch
+        # env = DummyVecEnv([lambda: env])  # Vectorize the environment
+        env.reset(seed=seed)  # Set the seed using the new method
+        return env
+    return _init
 
-# Initialize and wrap the custom Pendulum environment
-env = DummyVecEnv([lambda: PendulumVisual()])  # Vectorize the environment
+# Create a DummyVecEnv with 4 parallel environments
+env = DummyVecEnv([make_env(seed) for seed in range(4)])
 env = VecTransposeImage(env)  # Transpose image observations for PyTorch
+
+# Set a maximum number of steps per episode
+# env = TimeLimit(env, max_episode_steps=episode_timesteps)
+
+# Define the hyperparameters for PPO
+ppo_hyperparams = {
+    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
+    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
+}
 
 # DEBUG
 obs = env.reset()
-print(f"obs.shape = {obs.shape}")
+print("Environment reset successfully.")
 
 # Set random seed for reproducibility
 set_random_seed(42)
-env.seed(42)  # Use the updated seed method
+# env.seed(42)  # Use the updated seed method
 
 # Define the policy_kwargs to use the custom CNN
 policy_kwargs = dict(
@@ -40,29 +72,30 @@ model = PPO(
     "CnnPolicy",
     env,
     policy_kwargs=policy_kwargs,
+    learning_rate=ppo_hyperparams["learning_rate"],
+    n_steps=ppo_hyperparams["n_steps"],
+    batch_size=ppo_hyperparams["batch_size"],
+    gamma=ppo_hyperparams["gamma"],
+    gae_lambda=ppo_hyperparams["gae_lambda"],
+    clip_range=ppo_hyperparams["clip_range"],
     verbose=1,
-    learning_rate=3e-4,
-    n_steps=2048,
-    batch_size=64,
-    gamma=0.99,
-    gae_lambda=0.95,
-    clip_range=0.2
 )
+print("Model initialized successfully.")
 
 # Total number of agent-environment interaction steps for training
 total_timesteps = 500000
 
 # Train the model if --notrain flag is not provided
 if not args.notrain:
-    plotting_callback = PlottingCallback()
-    model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
+    print("Starting training ...")
+    # plotting_callback = PlottingCallback()
+    # model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
+    model.learn(total_timesteps=total_timesteps)
     model.save("ppo_visual_pendulum")
+    print("Training completed.")
 else:
     print("Skipping training. Loading the saved model...")
     model = PPO.load("ppo_visual_pendulum")
-
-# Close the plot
-plt.close()
 
 # Visual evaluation after training or loading
 print("Starting visual evaluation...")

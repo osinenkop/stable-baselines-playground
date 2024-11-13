@@ -2,6 +2,7 @@ __credits__ = ["Carlos Luis"]
 
 import numpy as np
 import gymnasium as gym
+import cv2
 
 from os import path
 from typing import Optional
@@ -14,6 +15,24 @@ from typing import Optional
 
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
+
+class ResizeObservation(gym.ObservationWrapper):
+    """
+    ## Description
+
+    A wrapper used to resize rendered images from gym environments.
+    """
+    def __init__(self, env, shape):
+        super(ResizeObservation, self).__init__(env)
+        self.shape = shape
+        self.observation_space = gym.spaces.Box(
+            low=0, high=255, shape=(shape[0], shape[1], 3), dtype=np.uint8
+        )
+
+    def observation(self, observation):
+        # Resize the observation using OpenCV
+        resized_observation = cv2.resize(observation, (self.shape[1], self.shape[0]))
+        return resized_observation
 
 class PendulumRenderFix(gym.Env):
     """
@@ -301,43 +320,32 @@ def angle_normalize(x):
     return ((x + np.pi) % (2 * np.pi)) - np.pi
 
 
-class PendulumVisual(gym.Env):
+class PendulumVisual(PendulumRenderFix):
     """
-    Gym's PendulumV1 modified to provide image-based observations instead of direct state measurements.
+    Gym's Pendulum environment modified to provide image-based observations instead of direct state measurements.
+    Inherits from PendulumRenderFix to fix rendering issues.
     """
-    def __init__(self):
-        super(PendulumVisual, self).__init__()
-        self.env = gym.make("Pendulum-v1", render_mode="rgb_array")
-        self.render_mode = "rgb_array"
-        self.np_random = None  # Initialize the random number generator
-
-        # Update the observation space to match the actual image size
-        image_shape = (500, 500, 3)  # Updated to match (height, width, channels)
+    def __init__(self, render_mode="rgb_array", render_during_training=False):
+        super(PendulumVisual, self).__init__()  # Call the constructor of PendulumRenderFix
+        self.render_mode = render_mode  # Set the render mode
+        # Update the observation space to use image dimensions
+        image_shape = (500, 500, 3)
         self.observation_space = spaces.Box(low=0, high=255, shape=image_shape, dtype=np.uint8)
 
-        # Define the action space (same as the original Pendulum environment)
-        self.action_space = self.env.action_space        
-
-    def seed(self, seed=None):
-        self.np_random, _ = gym.utils.seeding.np_random(seed)
-        self.env.reset(seed=seed)  # Use the reset method to seed the environment
-
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
-        obs, _ = self.env.reset(seed=seed)
-        image = self.env.render()   # Get the visual observation
-        return image, {}
+    def reset(self, *, seed: int = None, options: dict = None):
+        # Reset using the custom environment's method
+        obs, info = super().reset(seed=seed, options=options)
+        image = self.render()  # Get the image-based observation
+        return image, info
 
     def step(self, action):
-        obs, reward, done, truncated, info = self.env.step(action)
-        image = self.env.render()   # Get the visual observation
-
-        # DEBUG
-        print(f"image.shape = {image.shape}")
-
+        # Step using the custom environment's method
+        obs, reward, done, truncated, info = super().step(action)
+        image = self.render()  # Get the image-based observation
         return image, reward, done, truncated, info
 
-    def render(self, mode="human"):
-        return self.env.render(mode=mode)
+    def render(self):
+        return super().render()  # Call the render method from PendulumRenderFix
 
     def close(self):
-        self.env.close()
+        super().close()  # Call the close method from PendulumRenderFix
