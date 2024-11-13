@@ -1,19 +1,19 @@
 __credits__ = ["Carlos Luis"]
 
+import numpy as np
+import gymnasium as gym
+
 from os import path
 from typing import Optional
-
-import numpy as np
-
-import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
+from gymnasium import spaces  # Import spaces to define the observation space
+from typing import Optional
 
 
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
-
 
 class PendulumRenderFix(gym.Env):
     """
@@ -299,3 +299,33 @@ class PendulumRenderFix(gym.Env):
 
 def angle_normalize(x):
     return ((x + np.pi) % (2 * np.pi)) - np.pi
+
+
+class PendulumVisual(gym.Env):
+    """
+    Gym's PendulumV1 modified to provide image-based observations instead of direct state measurements.
+    """
+    def __init__(self):
+        super(PendulumVisual, self).__init__()
+        self.env = gym.make("Pendulum-v1", render_mode="rgb_array")
+        self.render_mode = "rgb_array"
+
+        # Update the observation space to match the actual image size
+        image_shape = (500, 500, 3)  # Updated to match (height, width, channels)
+        self.observation_space = spaces.Box(low=0, high=255, shape=image_shape, dtype=np.uint8)
+
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        obs, _ = self.env.reset(seed=seed)
+        image = self.env.render()
+        return image, {}
+
+    def step(self, action):
+        obs, reward, done, truncated, info = self.env.step(action)
+        image = self.env.render()
+        return image, reward, done, truncated, info
+
+    def render(self, mode="human"):
+        return self.env.render(mode=mode)
+
+    def close(self):
+        self.env.close()
