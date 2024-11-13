@@ -20,15 +20,25 @@ class CustomCNN(nn.Module):
         # )
 
         # Define a simpler CNN with fewer layers
+        # self.cnn = nn.Sequential(
+        #     nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=2, padding=1),  # Downsampling
+        #     nn.ReLU(),
+        #     nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # Further downsampling
+        #     nn.ReLU(),
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # Final downsampling
+        #     nn.ReLU(),
+        #     nn.Flatten()
+        # )        
+
+        # Define a even simpler CNN
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=2, padding=1),  # Downsampling
             nn.ReLU(),
             nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # Further downsampling
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # Final downsampling
-            nn.ReLU(),
-            nn.Flatten()
-        )        
+            nn.Flatten()  # Flatten for the fully connected layer
+        )
+
 
         # Compute the size of the flattened output from the CNN
         with torch.no_grad():
