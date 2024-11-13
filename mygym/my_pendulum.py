@@ -309,19 +309,31 @@ class PendulumVisual(gym.Env):
         super(PendulumVisual, self).__init__()
         self.env = gym.make("Pendulum-v1", render_mode="rgb_array")
         self.render_mode = "rgb_array"
+        self.np_random = None  # Initialize the random number generator
 
         # Update the observation space to match the actual image size
         image_shape = (500, 500, 3)  # Updated to match (height, width, channels)
         self.observation_space = spaces.Box(low=0, high=255, shape=image_shape, dtype=np.uint8)
 
+        # Define the action space (same as the original Pendulum environment)
+        self.action_space = self.env.action_space        
+
+    def seed(self, seed=None):
+        self.np_random, _ = gym.utils.seeding.np_random(seed)
+        self.env.reset(seed=seed)  # Use the reset method to seed the environment
+
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         obs, _ = self.env.reset(seed=seed)
-        image = self.env.render()
+        image = self.env.render()   # Get the visual observation
         return image, {}
 
     def step(self, action):
         obs, reward, done, truncated, info = self.env.step(action)
-        image = self.env.render()
+        image = self.env.render()   # Get the visual observation
+
+        # DEBUG
+        print(f"image.shape = {image.shape}")
+
         return image, reward, done, truncated, info
 
     def render(self, mode="human"):

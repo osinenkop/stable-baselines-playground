@@ -1,43 +1,36 @@
-import torch as th
+import torch
 import torch.nn as nn
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+import gym
 
-class CustomCNN(BaseFeaturesExtractor):
-    def __init__(self, observation_space, features_dim=256):
-        super(CustomCNN, self).__init__(observation_space, features_dim)
+class CustomCNN(nn.Module):
+    def __init__(self, observation_space: gym.spaces.Box, features_dim: int = 256):
+        super(CustomCNN, self).__init__()
+        # Ensure the observation space is an image with shape (H, W, C)
+        assert len(observation_space.shape) == 3, "Observation space must be an image (H, W, C)"
         
-        # Get the number of input channels from the observation space
-        n_input_channels = observation_space.shape[2]  # Should be 3 for RGB images
+        # Correctly extract the number of channels
+        n_input_channels = observation_space.shape[2]  # Use shape[2] for the number of channels
+        print("n_input_channels =", n_input_channels)  # Debug print to verify
 
-        # DEBUG
-        print(f"n_input_channels = {n_input_channels}")
-
-        # Define a simple CNN
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
             nn.Flatten(),
         )
 
-        # Compute the output shape of the CNN
-        with th.no_grad():
-            # Create a sample input tensor with the correct shape
-            sample_input = th.zeros(1, n_input_channels, 500, 500)  # Adjust to (1, channels, height, width)
+        # Compute the shape by doing a forward pass with a dummy tensor
+        with torch.no_grad():
+            n_flatten = self.cnn(torch.zeros(1, n_input_channels, 500, 500)).shape[1]
 
-            # DEBUG
-            print(f"sample_input.shape = {sample_input.shape}")
-
-            n_flatten = self.cnn(sample_input).shape[1]
-
-        # Final fully connected layer
         self.linear = nn.Sequential(
             nn.Linear(n_flatten, features_dim),
-            nn.ReLU()
+            nn.ReLU(),
         )
+        self.features_dim = features_dim
 
     def forward(self, observations):
         return self.linear(self.cnn(observations))

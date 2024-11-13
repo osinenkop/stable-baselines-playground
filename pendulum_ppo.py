@@ -31,6 +31,7 @@ env = gym.make("PendulumRenderFix-v0")
 
 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
 
+# Total number of agent-environment interaction steps for training
 total_timesteps = 500000
 
 # Define the hyperparameters for PPO
