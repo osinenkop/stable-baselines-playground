@@ -1,4 +1,4 @@
-import torch as th
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from model.cnn import CustomCNN
@@ -15,7 +15,7 @@ print("Original image shape:", image.shape)
 print("Should be (500, 500, 3)")
 
 # Convert the image to a PyTorch tensor, permute the dimensions, and add a batch dimension
-image_tensor = th.tensor(image, dtype=th.float32).permute(2, 0, 1).unsqueeze(0)  # Shape: (1, 3, 500, 500)
+image_tensor = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0)  # Shape: (1, 3, 500, 500)
 print("Permuted image tensor shape:", image_tensor.shape)
 print("Should be (1, 3, 500, 500)")
 
