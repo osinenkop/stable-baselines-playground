@@ -10,8 +10,6 @@ from gymnasium.error import DependencyNotInstalled
 
 import cv2
 
-import imutils
-
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
 
@@ -108,7 +106,7 @@ class PendulumRenderFix(gym.Env):
 
         self.render_mode = render_mode
 
-        self.screen_dim = 200
+        self.screen_dim = 300
         self.screen = None
         self.clock = None
         self.isopen = True

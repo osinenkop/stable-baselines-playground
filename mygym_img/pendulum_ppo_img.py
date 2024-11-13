@@ -65,7 +65,7 @@ if not args.notrain:
     # PPO.collect_rollouts = collect_rollouts
     # Create the PPO model with the specified hyperparameters
     model = PPO(
-        "MlpPolicy",
+        "CnnPolicy",
         env,
         learning_rate=ppo_hyperparams["learning_rate"],
         n_steps=ppo_hyperparams["n_steps"],
@@ -74,6 +74,7 @@ if not args.notrain:
         gae_lambda=ppo_hyperparams["gae_lambda"],
         clip_range=ppo_hyperparams["clip_range"],
         verbose=1,
+        tensorboard_log="./log/"
     )
     model.calf_filter.update(model.policy)
 
@@ -82,7 +83,7 @@ if not args.notrain:
 
     # Train the model
     print("Training the model...")
-    model.learn(total_timesteps=total_timesteps)
+    model.learn(total_timesteps=total_timesteps, tb_log_name='PPO_VIS')
     # Save the model after training
     model.save("ppo_pendulum_img")
     # Close the plot after training
