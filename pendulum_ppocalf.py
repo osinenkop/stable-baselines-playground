@@ -55,6 +55,7 @@ class calfq_filter():
         self.best_value_local = -math.inf
         self.best_value_global = -math.inf
         self.nu = 0.01 #1e-5
+        self.calf_filter_delay = 20
         print("CALFQ Filter init")
 
     def init_policy(self, policy):
@@ -63,7 +64,7 @@ class calfq_filter():
 
     
     def update_global_policy(self):
-        if self.iteration < 20:
+        if self.iteration < self.calf_filter_delay:
             pass
         else:
             print(style.CYAN, "Best_value_global = ", self.best_value_global, style.RESET)
@@ -94,7 +95,7 @@ class calfq_filter():
         self.iteration = iteration
         # print(style.RED, Q_value, style.RESET)
         # print(style.CYAN, best_value_local, style.RESET)
-        if iteration < 20:
+        if iteration < self.calf_filter_delay:
             return action
         else:
             if best_value_local <= Q_value:
