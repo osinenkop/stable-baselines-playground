@@ -27,6 +27,7 @@ nvidia-cusparse-cu12==12.3.1.170
 nvidia-nccl-cu12==2.21.5
 nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.4.127
+opencv-python-headless==4.10.0.84
 packaging==24.2
 pandas==2.2.3
 pillow==11.0.0
@@ -37,7 +38,6 @@ PyQt5-Qt5==5.15.15
 PyQt5_sip==12.15.0
 python-dateutil==2.9.0.post0
 pytz==2024.2
-setuptools==75.3.0
 six==1.16.0
 stable_baselines3==2.3.2
 sympy==1.13.1

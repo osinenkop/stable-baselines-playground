@@ -110,7 +110,7 @@ if __name__ == "__main__":
     # Train the model if --notrain flag is not provided
     if not args.notrain:
         print("Starting training ...")
-        model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
+        model.learn(total_timesteps=total_timesteps, callback=callback)
         # model.learn(total_timesteps=total_timesteps)
         model.save("ppo_visual_pendulum")
         print("Training completed.")
@@ -121,24 +121,29 @@ if __name__ == "__main__":
     # Visual evaluation after training or loading
     print("Starting visual evaluation...")
 
-    # Reload the environment for evaluation
-    env = PendulumVisual()
-    env = ResizeObservation(env, (image_height, image_width))
-    env = DummyVecEnv([lambda: env])
-    env = VecTransposeImage(env)  # Ensure the correct shape
-    # env = VecNormalize.load("vecnormalize_stats.pkl", env)  # Load VecNormalize if used
-    env.training = False  # Disable training mode for VecNormalize
-    env.norm_reward = False  # Disable reward normalization
+    # Environment for the agent (using 'rgb_array' mode)
+    env_agent = PendulumVisual(render_mode="rgb_array")
+    env_agent = ResizeObservation(env_agent, (image_height, image_width))  # Resize for the agent
 
-    obs = env.reset()
+    # Environment for visualization (using 'human' mode)
+    env_display = PendulumVisual(render_mode="human")
+
+    # Reset the environments
+    obs, _ = env_agent.reset()
+    env_display.reset()
 
     # Run the simulation with the trained agent
-    for _ in range(1500):
+    for _ in range(3000):
         action, _ = model.predict(obs)
-        obs, _, done, _ = env.step(action)
-        env.render()
-        if done:
-            obs = env.reset()
+        # action = env_agent.action_space.sample()  # Generate a random action
+        obs, reward, done, _, _ = env_agent.step(action)  # Take a step in the environment
 
-    # Close the environment
-    env.close()
+        env_display.step(action)  # Step in the display environment to show animation
+
+        if done:
+            obs, _ = env_agent.reset()  # Reset the agent's environment
+            env_display.reset()  # Reset the display environment
+
+    # Close the environments
+    env_agent.close()
+    env_display.close()

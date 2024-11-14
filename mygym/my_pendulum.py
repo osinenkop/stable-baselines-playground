@@ -17,11 +17,6 @@ DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
 
 class ResizeObservation(gym.ObservationWrapper):
-    """
-    ## Description
-
-    A wrapper used to resize rendered images from gym environments.
-    """
     def __init__(self, env, shape):
         super(ResizeObservation, self).__init__(env)
         self.shape = shape
@@ -30,8 +25,20 @@ class ResizeObservation(gym.ObservationWrapper):
         )
 
     def observation(self, observation):
+        # Debug: Check if the observation is empty or not
+        if observation is None or observation.size == 0:
+            print("Error: Observation is empty or not properly generated.")
+            raise ValueError("Observation is empty or not properly generated.")
+        
+        # Debug: Print the shape of the observation before resizing
+        # print("Original observation shape:", observation.shape)
+        
         # Resize the observation using OpenCV
         resized_observation = cv2.resize(observation, (self.shape[1], self.shape[0]))
+        
+        # Debug: Print the shape of the resized observation
+        # print("Resized observation shape:", resized_observation.shape)
+        
         return resized_observation
 
 class PendulumRenderFix(gym.Env):
@@ -326,8 +333,11 @@ class PendulumVisual(PendulumRenderFix):
     Inherits from PendulumRenderFix to fix rendering issues.
     """
     def __init__(self, render_mode="rgb_array", render_during_training=False):
-        super(PendulumVisual, self).__init__()  # Call the constructor of PendulumRenderFix
+        # super(PendulumVisual, self).__init__()  # Call the constructor of PendulumRenderFix
+        super(PendulumVisual, self).__init__(render_mode=render_mode)  # Pass render_mode to the parent class
+
         self.render_mode = render_mode  # Set the render mode
+        
         # Update the observation space to use image dimensions
         image_shape = (500, 500, 3)
         self.observation_space = spaces.Box(low=0, high=255, shape=image_shape, dtype=np.uint8)
@@ -335,14 +345,34 @@ class PendulumVisual(PendulumRenderFix):
     def reset(self, *, seed: int = None, options: dict = None):
         # Reset using the custom environment's method
         obs, info = super().reset(seed=seed, options=options)
+
         image = self.render()  # Get the image-based observation
-        return image, info
+
+        # Render image for the agent if in "rgb_array" mode
+        if self.render_mode == "rgb_array":
+            image = self.render()
+            # Check if the image is valid
+            if image is None or image.size == 0:
+                raise ValueError("Rendered image in reset() is empty or None.")
+            return image, info
+        else:
+            # If in "human" mode, just return a placeholder observation
+            return obs, info
 
     def step(self, action):
         # Step using the custom environment's method
         obs, reward, done, truncated, info = super().step(action)
-        image = self.render()  # Get the image-based observation
-        return image, reward, done, truncated, info
+
+        # Render image for the agent if in "rgb_array" mode
+        if self.render_mode == "rgb_array":
+            image = self.render()
+            # Check if the image is valid
+            if image is None or image.size == 0:
+                raise ValueError("Rendered image in step() is empty or None.")
+            return image, reward, done, truncated, info
+        else:
+            # If in "human" mode, just return a placeholder observation
+            return obs, reward, done, truncated, info
 
     def render(self):
         return super().render()  # Call the render method from PendulumRenderFix
