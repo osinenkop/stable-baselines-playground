@@ -17,7 +17,7 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 # Global parameters
 total_timesteps=65536
-episode_timesteps=128
+episode_timesteps=1024
 image_height=32
 image_width=32
 save_model_every_steps=8192
@@ -26,8 +26,8 @@ parallel_envs=8
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 512,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 512 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "n_steps": 1024,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 1024 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
@@ -101,9 +101,6 @@ if __name__ == "__main__":
     )
     print("Model initialized successfully.")
 
-    # Total number of agent-environment interaction steps for training
-    total_timesteps = 500000
-
     # Instantiate a plotting call back to show live learning curve
     plotting_callback = PlottingCallback()
 
@@ -124,22 +121,24 @@ if __name__ == "__main__":
     # Visual evaluation after training or loading
     print("Starting visual evaluation...")
 
-    # Visual evaluation after training or loading
-    env = DummyVecEnv([lambda: PendulumVisual()])
-    env = VecTransposeImage(env)
-    obs = env.reset()
-
     # Reload the environment for evaluation
     env = PendulumVisual()
-    obs, _ = env.reset()
+    env = ResizeObservation(env, (image_height, image_width))
+    env = DummyVecEnv([lambda: env])
+    env = VecTransposeImage(env)  # Ensure the correct shape
+    # env = VecNormalize.load("vecnormalize_stats.pkl", env)  # Load VecNormalize if used
+    env.training = False  # Disable training mode for VecNormalize
+    env.norm_reward = False  # Disable reward normalization
+
+    obs = env.reset()
 
     # Run the simulation with the trained agent
-    for _ in range(500):
+    for _ in range(1500):
         action, _ = model.predict(obs)
-        obs, _, done, _, _ = env.step(action)
+        obs, _, done, _ = env.step(action)
         env.render()
         if done:
-            obs, _ = env.reset()
+            obs = env.reset()
 
     # Close the environment
     env.close()
