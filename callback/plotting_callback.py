@@ -1,22 +1,20 @@
 # callback.py
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd  # Use pandas to save data
 
 from stable_baselines3.common.callbacks import BaseCallback
 
 class PlottingCallback(BaseCallback):
-    def __init__(self, update_every_episodes=1, verbose=0):
-
-        # print("DEBUG: PLOT: INIT")
-
-        self.rewards = []  # List to store rewards accumulated over steps
-        self.steps = []  # List to store step numbers
-
+    def __init__(self, save_path="episode_rewards.csv", update_every_episodes=1, verbose=0):
         super(PlottingCallback, self).__init__(verbose)
-        self.update_every_episodes = update_every_episodes
         self.episode_rewards = []  # List to store rewards for each episode
         self.episodes = []  # List to store episode numbers
+
+        self.update_every_episodes = update_every_episodes
+
         self.current_episode_reward = 0  # Accumulator for the current episode reward
+        self.save_path = save_path  # Path to save the reward data
 
         # Set up the plot
         self.figure, self.ax = plt.subplots()
@@ -25,7 +23,7 @@ class PlottingCallback(BaseCallback):
         self.ax.set_ylabel("Rewards")
         self.ax.set_title("Live Learning Curve")
         self.ax.legend()
-        plt.show(block=False)  # Show the plot window without blocking
+        plt.show(block=False)
 
     def _on_step(self) -> bool:
         # Accumulate the reward from the current step
@@ -42,6 +40,10 @@ class PlottingCallback(BaseCallback):
                 # Log the total reward for the episode
                 self.episode_rewards.append(self.current_episode_reward)
                 self.episodes.append(len(self.episodes) + 1)
+
+                # Record the episode reward to the logger
+                self.logger.record("train/episode_reward", self.current_episode_reward)
+
                 self.current_episode_reward = 0  # Reset for the next episode
 
                 # Only update the plot every `update_every_episodes` episodes
@@ -55,3 +57,7 @@ class PlottingCallback(BaseCallback):
 
         return True
 
+    def _on_training_end(self) -> None:
+        # Save the episode rewards to a CSV file
+        df = pd.DataFrame({"Episode": self.episodes, "Reward": self.episode_rewards})
+        df.to_csv(self.save_path, index=False)
