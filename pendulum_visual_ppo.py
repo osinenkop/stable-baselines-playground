@@ -16,19 +16,19 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 
 # Global parameters
-total_timesteps=65536
-episode_timesteps=1024
-image_height=32
-image_width=32
-save_model_every_steps=8192
+total_timesteps=131072*12
+episode_timesteps=2048
+image_height=64
+image_width=64
+save_model_every_steps=8192*4
 parallel_envs=8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 1024,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 1024 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "n_steps": 2048,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 2048 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
     "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
@@ -39,7 +39,13 @@ if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
+    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
     args = parser.parse_args()
+
+    # Check if the --console flag is used
+    if args.console:
+        import matplotlib
+        matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
 
     # Function to create the environment and set the seed
     def make_env(seed):
@@ -51,19 +57,8 @@ if __name__ == "__main__":
             return env
         return _init
 
-    # Create a DummyVecEnv with 4 parallel environments
-    # env = DummyVecEnv([make_env(seed) for seed in range(parallel_envs)])
-
     # Use SubprocVecEnv to run environments in parallel
     env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
-
-    # env = VecTransposeImage(env)  # Transpose image observations for PyTorch
-
-    # Apply reward and observation normalization
-    # env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=1e3) 
-
-    # Set a maximum number of steps per episode
-    # env = TimeLimit(env, max_episode_steps=episode_timesteps)
 
     # Set up a checkpoint callback to save the model every 'save_freq' steps
     checkpoint_callback = CheckpointCallback(
@@ -72,13 +67,11 @@ if __name__ == "__main__":
         name_prefix="ppo_visual_pendulum"
     )
 
-    # DEBUG
     obs = env.reset()
     print("Environment reset successfully.")
 
     # Set random seed for reproducibility
     set_random_seed(42)
-    # env.seed(42)  # Use the updated seed method
 
     # Define the policy_kwargs to use the custom CNN
     policy_kwargs = dict(
@@ -104,6 +97,11 @@ if __name__ == "__main__":
     # Instantiate a plotting call back to show live learning curve
     plotting_callback = PlottingCallback()
 
+    # If --console flag is set, disable the plot and just save the data
+    if args.console:
+        plotting_callback.figure = None  # Disable plotting
+        print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
+
     # Combine both callbacks using CallbackList
     callback = CallbackList([checkpoint_callback, plotting_callback])
 
@@ -119,7 +117,7 @@ if __name__ == "__main__":
         model = PPO.load("ppo_visual_pendulum")
 
     # Visual evaluation after training or loading
-    print("Starting visual evaluation...")
+    print("Starting evaluation...")
 
     # Environment for the agent (using 'rgb_array' mode)
     env_agent = PendulumVisual(render_mode="rgb_array")
