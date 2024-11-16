@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# torch
+checkpoints/
+
 # C extensions
 *.so
 

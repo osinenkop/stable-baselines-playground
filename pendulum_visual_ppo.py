@@ -17,17 +17,17 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 # Global parameters
 total_timesteps=131072*12
-episode_timesteps=2048
-image_height=64
-image_width=64
+episode_timesteps=4096
+image_height=128
+image_width=128
 save_model_every_steps=8192*4
 parallel_envs=8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 2048,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 2048 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "n_steps": 4096,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 4096 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
