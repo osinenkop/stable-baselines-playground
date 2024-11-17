@@ -18,8 +18,8 @@ from stable_baselines3.common.vec_env import VecNormalize
 # Global parameters
 total_timesteps=131072*12
 episode_timesteps=4096
-image_height=128
-image_width=128
+image_height=32
+image_width=32
 save_model_every_steps=8192*4
 parallel_envs=8
 
