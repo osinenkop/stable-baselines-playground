@@ -17,4 +17,22 @@ To get the same results you have to run the following command:
 python3 Pendulum_PPO.py 
 ```
 
-This will run on 
+You can use tensorborad to view the results:
+
+```shell
+tensorboard --logdir=log 
+```
+
+you should then enter the link which will provided by tensorboard (Please keep the window open or tesorboard server will shot down):
+
+![Tensorboard server](img/tensorboard_server.png)
+
+you should get similar webpage:
+
+![Tensorboard web interface](img/Tensorboard_web_interface.png)
+
+After that you have to download these reportsd as csv files and run generate_curves:
+
+```shell
+python3 generate_curves.py 
+```
