@@ -7,10 +7,14 @@ The instructions are similar to those in [regelum-playground](https://github.com
 
 Don't forget to install `tkinter`.
 
+We got the follosing results by runing our code on ten different seeds [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+
+![Mean Reward vs number of training iterations](img/Figure_1.png)
+
 To get the same results you have to run the following command:
 
 ```shell
 python3 Pendulum_PPO.py 
 ```
 
-This will run on ten different seeds [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+This will run on 
