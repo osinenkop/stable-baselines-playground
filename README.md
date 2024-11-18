@@ -31,7 +31,7 @@ you should get similar webpage:
 
 ![Tensorboard web interface](img/Tensorboard_web_interface.png)
 
-After that you have to download these reportsd as csv files and run generate_curves:
+After that you have to download these reports as csv files and run generate_curves:
 
 ```shell
 python3 generate_curves.py 
