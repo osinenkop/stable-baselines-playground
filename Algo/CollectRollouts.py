@@ -9,6 +9,18 @@ from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecEnv
 from gymnasium import spaces
 
+class style():
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    UNDERLINE = '\033[4m'
+    RESET = '\033[0m'
+
 def collect_rollouts(
         self,
         env: VecEnv,
@@ -44,7 +56,7 @@ def collect_rollouts(
         callback.on_rollout_start()
 
         self.policy = calf_filter.get_last_good_model()
-        # print(style.YELLOW, self.policy.mlp_extractor.policy_net[2].weight, style.RESET)
+        print(style.YELLOW, self.policy.mlp_extractor.policy_net[2].weight, style.RESET)
         calf_filter.value_reset()
 
         while n_steps < n_rollout_steps:
@@ -86,8 +98,7 @@ def collect_rollouts(
             else:
                 clipped_actions = np.array(clipped_actions)
 
-            if isinstance(self.action_space, spaces.Box):
-                clipped_actions = np.clip(clipped_actions, self.action_space.low, self.action_space.high)
+            clipped_actions = np.clip(clipped_actions, self.action_space.low, self.action_space.high)
 
             # TODO Update CaLF foreach episode
             new_obs, rewards, dones, infos = env.step(clipped_actions)
@@ -142,7 +153,7 @@ def collect_rollouts(
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
 
         
-        # print(style.BLUE, calf_filter.get_last_good_model().mlp_extractor.policy_net[2].weight, style.RESET)
+        print(style.BLUE, calf_filter.get_last_good_model().mlp_extractor.policy_net[2].weight, style.RESET)
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
@@ -150,4 +161,4 @@ def collect_rollouts(
 
         callback.on_rollout_end()
 
-        return True   
+        return True

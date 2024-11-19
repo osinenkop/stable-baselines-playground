@@ -83,12 +83,12 @@ if not args.notrain:
         # Initialize CaLF filter
         calf_filter = calfq_filter()
         calf_filter.sampling_time_init(dt)
-    
+
         # Merge CALF with PPO 
         model.calf_filter = calf_filter
-        model.collect_rollouts = collect_rollouts
-        model.learn = learn
-    
+        model.collect_rollouts = collect_rollouts.__get__(model, PPO)
+        model.learn = learn.__get__(model, PPO)    
+
         # Train the model
         model_name = "Pedulum_PPP_CaLF_Policy_" + str(seed)
         print("Training model " + model_name)
