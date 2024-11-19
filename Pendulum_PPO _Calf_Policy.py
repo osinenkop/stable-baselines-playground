@@ -7,6 +7,8 @@ from Algo.Calf import calfq_filter
 from Algo.CollectRollouts import collect_rollouts
 from Algo.Learn import learn
 
+import torch
+
 from stable_baselines3 import PPO
 
 class style():
@@ -25,6 +27,10 @@ class style():
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum with image observation")
 parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
+
+# Check if GPU is available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 # Parse the arguments
 args = parser.parse_args()
@@ -61,6 +67,10 @@ env=gym.make(env_name, render_mode="rgb_array", g=9.81)
 
 seeds = ppo_hyperparams['seeds']
 
+# Initialize CaLF filter
+calf_filter = calfq_filter()
+calf_filter.sampling_time_init(dt)
+
 # Check if the --notrain flag is provided
 if not args.notrain:
     # We will train for different seeds
@@ -83,9 +93,12 @@ if not args.notrain:
         # Initialize CaLF filter
         calf_filter = calfq_filter()
         calf_filter.sampling_time_init(dt)
+        
+        model.policy.to(device)
 
         # Merge CALF with PPO 
         model.calf_filter = calf_filter
+        model.calf_filter.init_policy(model.policy)
         model.collect_rollouts = collect_rollouts.__get__(model, PPO)
         model.learn = learn.__get__(model, PPO)    
 
@@ -94,8 +107,12 @@ if not args.notrain:
         print("Training model " + model_name)
         model.learn(total_timesteps=total_timesteps, tb_log_name=model_name)
 
-        # Save the model after training
-        model.save("./SavedModels/" + model_name)
+        try:
+            delattr(model, "calf_filter")
+            # Save the model after training
+            model.save("./SavedModels/" + model_name)
+        except:
+            print(style.RED, "Could not save the model", style.RESET)    
     
         # Close the training environment
         env.close()

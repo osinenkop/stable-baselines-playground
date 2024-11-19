@@ -4,6 +4,8 @@ import argparse
 from stable_baselines3.common.utils import get_linear_fn
 from stable_baselines3 import PPO
 
+import torch
+
 class style():
     BLACK = '\033[30m'
     RED = '\033[31m'
@@ -48,6 +50,8 @@ ppo_hyperparams = {
 # clip_range: The range within which the policy is clipped to prevent overly large updates, ensuring more stable training.
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Use your gym env for Pendulum
 env_name='Pendulum-v1'
 env=gym.make(env_name, render_mode="rgb_array", g=9.81)
@@ -72,9 +76,13 @@ if not args.notrain:
             tensorboard_log="./log/",
             seed=seed
         )
-    
+
+        model.calf_filter.reset()
+        model.policy.to(device)
+        model.calf_filter.init_policy(model.policy)
+
         # Train the model
-        model_name = "Pedulum_PPP_" + str(seed)
+        model_name = "Pedulum_PPO_" + str(seed)
         print("Training model " + model_name)
         model.learn(total_timesteps=total_timesteps, tb_log_name=model_name)
 

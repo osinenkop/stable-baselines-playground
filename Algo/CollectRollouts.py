@@ -47,7 +47,7 @@ def collect_rollouts(
         self.policy.set_training_mode(False)
 
         n_steps = 0
-        print("Iteration", iteration)
+        # print("Iteration", iteration)
         rollout_buffer.reset()
         # Sample new weights for the state dependent exploration
         if self.use_sde:
@@ -55,15 +55,13 @@ def collect_rollouts(
 
         callback.on_rollout_start()
 
-        self.policy = calf_filter.get_last_good_model()
-        print(style.YELLOW, self.policy.mlp_extractor.policy_net[2].weight, style.RESET)
-        calf_filter.value_reset()
+        total_reward = 0
 
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
-            # print(n_steps)
+            
 
             with torch.no_grad():
                 # Convert to pytorch tensor or to TensorDict
@@ -85,7 +83,6 @@ def collect_rollouts(
                     clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
             # TODO Add CaLF here
-            
             clipped_actions = self.calf_filter.compute_action(clipped_actions, self._last_obs[-1], 
                                                                self.calf_filter.best_policy_global.predict_values(obs_tensor), 
                                                                self.policy.predict_values(obs_tensor),
@@ -103,13 +100,7 @@ def collect_rollouts(
             # TODO Update CaLF foreach episode
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
-            if dones[-1]:
-                self.calf_filter.update_global_policy()
-                # if self.calf_filter.policy_update is True:
-                #     self.calf_filter.update(self.policy)
-                # else:
-                #     self.calf_filter.policy_update = True
-                #     print("Policy Updated")
+            total_reward += rewards[-1]
 
             self.num_timesteps += env.num_envs
             # Give access to local variables
@@ -152,13 +143,19 @@ def collect_rollouts(
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
 
-        
-        print(style.BLUE, calf_filter.get_last_good_model().mlp_extractor.policy_net[2].weight, style.RESET)
-
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
         callback.update_locals(locals())
 
         callback.on_rollout_end()
+
+        avr_reward = total_reward / n_rollout_steps
+        print(style.GREEN, "avr_reward = " , avr_reward, style.RESET)
+        print(style.CYAN, "avr_reward_best = " , self.calf_filter.avr_reward, style.RESET)
+        if avr_reward > self.calf_filter.avr_reward:
+            # self.calf_filter.best_policy_weights = self.policy.state_dict()
+            self.calf_filter.init_policy(self.policy)
+            self.calf_filter.update_global_policy()
+            self.calf_filter.avr_reward = avr_reward
 
         return True
