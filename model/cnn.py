@@ -8,6 +8,27 @@ class CustomCNN(nn.Module):
         # Ensure that the observation space is an image with shape (C, H, W)
         n_input_channels = observation_space.shape[0]
 
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Flatten()
+        )
+
+
+        # self.cnn = nn.Sequential(
+        #     nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),  # Retain more spatial info
+        #     nn.ReLU(),
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),  # Keep feature maps consistent
+        #     nn.ReLU(),
+        #     nn.Flatten()
+        # )
+
         # Define your CNN layers
         # self.cnn = nn.Sequential(
         #     nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
@@ -31,13 +52,13 @@ class CustomCNN(nn.Module):
         # )        
 
         # Define a even simpler CNN
-        self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=2, padding=1),  # Downsampling
-            nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # Further downsampling
-            nn.ReLU(),
-            nn.Flatten()  # Flatten for the fully connected layer
-        )
+        # self.cnn = nn.Sequential(
+        #     nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=2, padding=1),  # Downsampling
+        #     nn.ReLU(),
+        #     nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # Further downsampling
+        #     nn.ReLU(),
+        #     nn.Flatten()  # Flatten for the fully connected layer
+        # )
 
 
         # Compute the size of the flattened output from the CNN
