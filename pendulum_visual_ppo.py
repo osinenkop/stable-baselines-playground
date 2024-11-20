@@ -7,31 +7,32 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from model.cnn import CustomCNN
 from mygym.my_pendulum import PendulumVisual
-from callback.plotting_callback import PlottingCallback  # Import your existing callback
+from callback.plotting_callback import PlottingCallback
+from callback.grad_monitor_callback import GradientMonitorCallback
 from stable_baselines3.common.utils import get_linear_fn
 from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import ResizeObservation 
+from mygym.my_pendulum import ResizeObservation
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 
 # Global parameters
-total_timesteps=131072*12
-episode_timesteps=4096
-image_height=32
-image_width=32
-save_model_every_steps=8192*4
-parallel_envs=8
+total_timesteps = 131072 * 4
+episode_timesteps = 256
+image_height = 64
+image_width = 64
+save_model_every_steps = 8192 * 4
+parallel_envs = 8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
-    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 4096,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 4096 * parallel_envs,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 512,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 2048,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
+    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
 }
 
 if __name__ == "__main__":
@@ -40,6 +41,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+    parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
     args = parser.parse_args()
 
     # Check if the --console flag is used
@@ -60,12 +62,10 @@ if __name__ == "__main__":
     # Use SubprocVecEnv to run environments in parallel
     env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
-    # Set up a checkpoint callback to save the model every 'save_freq' steps
-    checkpoint_callback = CheckpointCallback(
-        save_freq=save_model_every_steps,  # Save the model periodically
-        save_path="./checkpoints",  # Directory to save the model
-        name_prefix="ppo_visual_pendulum"
-    )
+    # Apply reward and observation normalization if --normalize flag is provided
+    if args.normalize:
+        env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+        print("Normalization enabled.")
 
     obs = env.reset()
     print("Environment reset successfully.")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Define the policy_kwargs to use the custom CNN
     policy_kwargs = dict(
         features_extractor_class=CustomCNN,
-        features_extractor_kwargs=dict(features_dim=256)
+        features_extractor_kwargs=dict(features_dim=32)
     )
 
     # Create the PPO agent using the custom feature extractor
@@ -94,8 +94,20 @@ if __name__ == "__main__":
     )
     print("Model initialized successfully.")
 
-    # Instantiate a plotting call back to show live learning curve
+    # begin----Callbacks----
+
+    # Set up a checkpoint callback to save the model every 'save_freq' steps
+    checkpoint_callback = CheckpointCallback(
+        save_freq=save_model_every_steps,  # Save the model periodically
+        save_path="./checkpoints",  # Directory to save the model
+        name_prefix="ppo_visual_pendulum"
+    )
+
+    # Instantiate a plotting callback to show the live learning curve
     plotting_callback = PlottingCallback()
+
+    # Instantiate the GradientMonitorCallback
+    gradient_monitor_callback = GradientMonitorCallback()    
 
     # If --console flag is set, disable the plot and just save the data
     if args.console:
@@ -103,18 +115,30 @@ if __name__ == "__main__":
         print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
 
     # Combine both callbacks using CallbackList
-    callback = CallbackList([checkpoint_callback, plotting_callback])
+    callback = CallbackList([checkpoint_callback, plotting_callback, gradient_monitor_callback])
+
+    # end----Callbacks----
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
         print("Starting training ...")
         model.learn(total_timesteps=total_timesteps, callback=callback)
-        # model.learn(total_timesteps=total_timesteps)
         model.save("ppo_visual_pendulum")
+
+        # Save the normalization statistics if --normalize is used
+        if args.normalize:
+            env.save("vecnormalize_stats.pkl")
+
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
         model = PPO.load("ppo_visual_pendulum")
+
+        # Load the normalization statistics if --normalize is used
+        if args.normalize:
+            env = VecNormalize.load("vecnormalize_stats.pkl", env)
+            env.training = False  # Set to evaluation mode
+            env.norm_reward = False  # Disable reward normalization for evaluation
 
     # Visual evaluation after training or loading
     print("Starting evaluation...")
