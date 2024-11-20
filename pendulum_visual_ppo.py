@@ -9,6 +9,7 @@ from model.cnn import CustomCNN
 from mygym.my_pendulum import PendulumVisual
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
+from callback.cnn_output_callback import SaveCNNOutputCallback
 from stable_baselines3.common.utils import get_linear_fn
 from gymnasium.wrappers import TimeLimit
 from mygym.my_pendulum import ResizeObservation
@@ -55,6 +56,7 @@ if __name__ == "__main__":
             env = PendulumVisual()
             env = TimeLimit(env, max_episode_steps=episode_timesteps)  # Set a maximum number of steps per episode
             env = ResizeObservation(env, (image_height, image_width))  # Resize the observation
+            env = NormalizeObservation(env)  # Normalize observations
             env.reset(seed=seed)  # Set the seed using the new method
             return env
         return _init
@@ -64,8 +66,8 @@ if __name__ == "__main__":
 
     # Apply reward and observation normalization if --normalize flag is provided
     if args.normalize:
-        env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
-        print("Normalization enabled.")
+        env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
+        print("Reward normalization enabled. Observations are pre-normalized to [0, 1].")
 
     obs = env.reset()
     print("Environment reset successfully.")
@@ -96,6 +98,22 @@ if __name__ == "__main__":
 
     # begin----Callbacks----
 
+    # Predefine a fixed sample of observations (e.g., from a single environment reset)
+    sample_env = PendulumVisual(render_mode="rgb_array")
+    sample_env = ResizeObservation(sample_env, (image_height, image_width))
+    sample_env = NormalizeObservation(sample_env)
+    sample_obs, _ = sample_env.reset()
+
+    # Ensure the sample is properly shaped for the CNN
+    sample_obs = np.expand_dims(sample_obs, axis=0)  # Add batch dimension if needed
+
+    # Set up the SaveCNNOutputCallback
+    cnn_output_callback = SaveCNNOutputCallback(
+        save_path="./cnn_outputs", 
+        obs_sample=sample_obs, 
+        every_n_steps=5000
+    )
+
     # Set up a checkpoint callback to save the model every 'save_freq' steps
     checkpoint_callback = CheckpointCallback(
         save_freq=save_model_every_steps,  # Save the model periodically
@@ -115,7 +133,7 @@ if __name__ == "__main__":
         print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
 
     # Combine both callbacks using CallbackList
-    callback = CallbackList([checkpoint_callback, plotting_callback, gradient_monitor_callback])
+    callback = CallbackList([checkpoint_callback, plotting_callback, gradient_monitor_callback, cnn_output_callback])
 
     # end----Callbacks----
 
