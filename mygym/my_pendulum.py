@@ -16,6 +16,19 @@ from typing import Optional
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
 
+class NormalizeObservation(ObservationWrapper):
+    def __init__(self, env):
+        super(NormalizeObservation, self).__init__(env)
+        # Modify observation space to reflect normalization
+        obs_shape = self.observation_space.shape
+        self.observation_space = spaces.Box(
+            low=0.0, high=1.0, shape=obs_shape, dtype=np.float32
+        )
+
+    def observation(self, observation):
+        # Scale pixel values to [0, 1]
+        return observation / 255.0
+
 class ResizeObservation(gym.ObservationWrapper):
     def __init__(self, env, shape):
         super(ResizeObservation, self).__init__(env)
