@@ -1,12 +1,19 @@
 import torch
 import torch.nn as nn
+import sys
+
 from gymnasium import spaces
 
 class CustomCNN(nn.Module):
     def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
         super(CustomCNN, self).__init__()
-        # Ensure that the observation space is an image with shape (C, H, W)
-        n_input_channels = observation_space.shape[0]
+        # Libraries like Stable-Baselines3 or environments often use the HWC format
+        # (Height, Width, Channels), whereas PyTorch's CNN layers expect the CHW format (Channels, Height, Width).
+        n_input_channels = observation_space.shape[2]
+
+        # print(f"n_input_channels = {n_input_channels}")
+
+        # print(f"observation_space.shape = {observation_space.shape}")
 
         # Define the convolutional layers without the Flatten operation
         self.cnn = nn.Sequential(
@@ -20,8 +27,11 @@ class CustomCNN(nn.Module):
 
         # Compute the size of the flattened output
         with torch.no_grad():
-            sample_input = torch.zeros(1, *observation_space.shape)
-            n_flatten = self.cnn(sample_input).view(sample_input.size(0), -1).shape[1]
+            # Libraries like Stable-Baselines3 or environments often use the HWC format
+            # (Height, Width, Channels), whereas PyTorch's CNN layers expect the CHW format (Channels, Height, Width). 
+            # Here, we fix it          
+            sample_input = torch.zeros(1, *observation_space.shape).permute(0, 3, 1, 2)
+            n_flatten = self.cnn(sample_input).reshape(sample_input.size(0), -1).shape[1]
 
         # Define the Flatten operation and the linear layer separately
         self.flatten = nn.Flatten()
@@ -30,18 +40,33 @@ class CustomCNN(nn.Module):
         # Set the features_dim attribute
         self.features_dim = features_dim
 
-    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
         # Pass observations through the CNN and linear layers
-        raw_features = self.cnn(observations)  # Preserve the spatial dimensions here
+        corrected_observation = observation.permute(0, 3, 1, 2)  # Swap axes to (batch_size, channels, height, width)
+
+        # print(f"observation.shape = {observation.shape}")
+        # print(f"corrected_observation.shape = {corrected_observation.shape}")
+
+        raw_features = self.cnn(corrected_observation)  # Preserve the spatial dimensions here
         flattened_features = self.flatten(raw_features)  # Flatten for the linear layer
         return self.linear(flattened_features)
 
-    def get_intermediate_features(self, x):
-        # Extract raw features (before flattening) and processed output
-        raw_features = self.cnn(x)
-        print(f"Raw features shape: {raw_features.shape}")  # Should now retain spatial dimensions
-        processed_output = self.linear(self.flatten(raw_features))
-        return raw_features, processed_output
+    def get_layer_features(self, x):
+        print(f"Input shape: {x.shape}")  # Debugging print
+        features = {}
+        x = self.cnn[0](x)  # Conv2d(32, ...)
+        features["layer1"] = x.clone()
+        print(f"Layer1 output shape: {x.shape}")  # Debugging print
+        x = self.cnn[1](x)  # ReLU
+        x = self.cnn[2](x)  # Conv2d(64, ...)
+        features["layer2"] = x.clone()
+        print(f"Layer2 output shape: {x.shape}")  # Debugging print
+        x = self.cnn[3](x)  # ReLU
+        x = self.cnn[4](x)  # Conv2d(128, ...)
+        features["layer3"] = x.clone()
+        print(f"Layer3 output shape: {x.shape}")  # Debugging print
+        x = self.cnn[5](x)  # ReLU
+        return features
 
 # class SimplifiedCNN(nn.Module):
 #     def __init__(self, observation_space, features_dim=256):
