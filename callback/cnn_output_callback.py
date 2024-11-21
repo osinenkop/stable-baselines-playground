@@ -11,25 +11,27 @@ class SaveCNNOutputCallback(BaseCallback):
         os.makedirs(save_path, exist_ok=True)
 
     def _on_step(self) -> bool:
-        # Save the CNN outputs every `self.every_n_steps` steps
+        print(f"Step: {self.n_calls}, Save Every: {self.every_n_steps}")
         if self.n_calls % self.every_n_steps == 0:
+            print("Saving CNN output...")
             if self.obs_sample is not None:
                 # Pass the observations through the CNN
-                cnn_features = self._extract_cnn_features(self.obs_sample)
-                # Save the features to a file
+                processed_output, raw_features = self._extract_cnn_features(self.obs_sample)
+                # Save the features as a tuple
                 torch.save(
-                    cnn_features,
+                    (processed_output, raw_features),  # Save both processed output and raw features
                     os.path.join(self.save_path, f"cnn_output_step_{self.num_timesteps}.pt")
                 )
+                print(f"Saved CNN outputs at timestep {self.num_timesteps}.")
                 self.logger.info(f"Saved CNN outputs at timestep {self.num_timesteps}.")
+            else:
+                print("No observation sample provided to extract features.")
         return True
 
     def _extract_cnn_features(self, observations):
-        # Access the policy's CNN
-        cnn_model = self.model.policy.features_extractor
+        cnn_model = self.model.policy.features_extractor  # Access the custom CNN
         with torch.no_grad():
-            # Convert the observations to a tensor
             obs_tensor = torch.tensor(observations, dtype=torch.float32, device=self.model.device)
-            # Pass the observations through the CNN
-            cnn_features = cnn_model(obs_tensor)
-        return cnn_features
+            # Forward pass through the CNN to get both processed output and raw features
+            raw_features, processed_output = cnn_model.get_intermediate_features(obs_tensor)
+        return processed_output, raw_features      

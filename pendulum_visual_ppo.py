@@ -112,7 +112,7 @@ if __name__ == "__main__":
     cnn_output_callback = SaveCNNOutputCallback(
         save_path="./cnn_outputs", 
         obs_sample=sample_obs, 
-        every_n_steps=5000
+        every_n_steps=25
     )
 
     # Set up a checkpoint callback to save the model every 'save_freq' steps
@@ -135,6 +135,17 @@ if __name__ == "__main__":
 
     # Combine both callbacks using CallbackList
     callback = CallbackList([checkpoint_callback, plotting_callback, gradient_monitor_callback, cnn_output_callback])
+
+    # Example observation sample
+    # obs_sample = np.random.rand(1, 3, image_height, image_width)  # Adjust dimensions as per your CNN input
+
+    # # Instantiate the SaveCNNOutputCallback with the observation sample
+    # print("DEBUG. Saving CNN features for a sample image")
+    # save_cnn_output_callback = SaveCNNOutputCallback(
+    #     save_path="./cnn_outputs",
+    #     obs_sample=obs_sample,  # Provide the sample observation
+    #     every_n_steps=250,  # Adjust as needed
+    # )
 
     # end----Callbacks----
 
