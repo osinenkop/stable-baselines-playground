@@ -7,6 +7,7 @@ import cv2
 from os import path
 from typing import Optional
 from gymnasium import spaces
+from gymnasium import ObservationWrapper
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 from gymnasium import spaces  # Import spaces to define the observation space
@@ -29,7 +30,7 @@ class NormalizeObservation(ObservationWrapper):
         # Scale pixel values to [0, 1]
         return observation / 255.0
 
-class ResizeObservation(gym.ObservationWrapper):
+class ResizeObservation(ObservationWrapper):
     def __init__(self, env, shape):
         super(ResizeObservation, self).__init__(env)
         self.shape = shape

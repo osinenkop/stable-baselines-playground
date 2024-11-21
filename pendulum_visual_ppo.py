@@ -7,6 +7,7 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from model.cnn import CustomCNN
 from mygym.my_pendulum import PendulumVisual
+from mygym.my_pendulum import NormalizeObservation
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
 from callback.cnn_output_callback import SaveCNNOutputCallback
