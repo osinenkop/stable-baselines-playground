@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import sys
-import numpy as np
 
 from gymnasium import spaces
 
