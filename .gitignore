@@ -3,7 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# torch
+# Local stuff
+/cnn_outputs/
+episode_rewards.csv
+gradients_log.csv
 checkpoints/
 
 # C extensions

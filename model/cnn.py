@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import sys
+import numpy as np
 
 from gymnasium import spaces
 
@@ -52,19 +53,19 @@ class CustomCNN(nn.Module):
         return self.linear(flattened_features)
 
     def get_layer_features(self, x):
-        print(f"Input shape: {x.shape}")  # Debugging print
+        # print(f"Input shape: {x.shape}")  # Debugging print
         features = {}
         x = self.cnn[0](x)  # Conv2d(32, ...)
         features["layer1"] = x.clone()
-        print(f"Layer1 output shape: {x.shape}")  # Debugging print
+        # print(f"Layer1 output shape: {x.shape}")  # Debugging print
         x = self.cnn[1](x)  # ReLU
         x = self.cnn[2](x)  # Conv2d(64, ...)
         features["layer2"] = x.clone()
-        print(f"Layer2 output shape: {x.shape}")  # Debugging print
+        # print(f"Layer2 output shape: {x.shape}")  # Debugging print
         x = self.cnn[3](x)  # ReLU
         x = self.cnn[4](x)  # Conv2d(128, ...)
         features["layer3"] = x.clone()
-        print(f"Layer3 output shape: {x.shape}")  # Debugging print
+        # print(f"Layer3 output shape: {x.shape}")  # Debugging print
         x = self.cnn[5](x)  # ReLU
         return features
 

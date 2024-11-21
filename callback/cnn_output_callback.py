@@ -3,35 +3,43 @@ import torch
 from stable_baselines3.common.callbacks import BaseCallback
 
 class SaveCNNOutputCallback(BaseCallback):
-    def __init__(self, save_path: str, obs_sample=None, every_n_steps=1000):
+    def __init__(self, save_path: str, every_n_steps=1000):
         super(SaveCNNOutputCallback, self).__init__()
         self.save_path = save_path
-        self.obs_sample = obs_sample
         self.every_n_steps = every_n_steps
         os.makedirs(save_path, exist_ok=True)
 
     def _on_step(self) -> bool:
-        # print(f"Step: {self.n_calls}, Save Every: {self.every_n_steps}")
         if self.n_calls % self.every_n_steps == 0:
             print("Saving CNN output...")
-            if self.obs_sample is not None:
-                layer_features = self._extract_cnn_features(self.obs_sample)
-                # Save the features
-                torch.save(
-                    layer_features,
-                    os.path.join(self.save_path, f"cnn_layer_features_step_{self.num_timesteps}.pt")
-                )
-                # # Pass the observations through the CNN
-                # processed_output, raw_features = self._extract_cnn_features(self.obs_sample)
-                # # Save the features as a tuple
-                # torch.save(
-                #     (processed_output, raw_features),  # Save both processed output and raw features
-                #     os.path.join(self.save_path, f"cnn_output_step_{self.num_timesteps}.pt")
-                # )
-                # print(f"Saved CNN outputs at timestep {self.num_timesteps}.")
-                self.logger.info(f"Saved CNN outputs at timestep {self.num_timesteps}.")
-            else:
-                print("No observation sample provided to extract features.")
+            
+            # Fetch the most recent observation from the rollout buffer
+            try:
+                obs_sample = self.model.rollout_buffer.observations[-1]
+            except AttributeError:
+                print("Rollout buffer not found, skipping CNN saving.")
+                return True
+
+            # Ensure the observation is properly formatted
+            if isinstance(obs_sample, np.ndarray):  # If using NumPy arrays
+                obs_sample = torch.tensor(obs_sample, dtype=torch.float32).to(self.model.device)
+            elif isinstance(obs_sample, torch.Tensor):  # If using Torch tensors
+                obs_sample = obs_sample.to(self.model.device)
+            
+            # Pass the observations through the CNN
+            cnn_model = self.model.policy.features_extractor  # Access the custom CNN
+            with torch.no_grad():
+                layer_features = cnn_model.get_layer_features(obs_sample)
+
+            # Debug prints for the observation
+            print(f"Live observation for CNN: {obs_sample.shape} - Min: {obs_sample.min()} Max: {obs_sample.max()}")
+
+            # Save the features
+            torch.save(
+                layer_features,
+                os.path.join(self.save_path, f"cnn_layer_features_step_{self.num_timesteps}.pt")
+            )
+            print(f"Saved CNN outputs at timestep {self.num_timesteps}.")
         return True
 
     def _extract_cnn_features(self, observations):
@@ -41,12 +49,3 @@ class SaveCNNOutputCallback(BaseCallback):
             obs_tensor = torch.tensor(observations, dtype=torch.float32, device=self.model.device).permute(0, 3, 1, 2)
             layer_features = cnn_model.get_layer_features(obs_tensor)
         return layer_features
-
-
-    # def _extract_cnn_features(self, observations):
-    #     cnn_model = self.model.policy.features_extractor  # Access the custom CNN
-    #     with torch.no_grad():
-    #         obs_tensor = torch.tensor(observations, dtype=torch.float32, device=self.model.device)
-    #         # Forward pass through the CNN to get both processed output and raw features
-    #         raw_features, processed_output = cnn_model.get_intermediate_features(obs_tensor)
-    #     return processed_output, raw_features      
