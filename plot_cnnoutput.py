@@ -28,7 +28,8 @@ for file_name in sorted(os.listdir(output_path)):
                 feature_map = features[0, i].cpu().numpy()
 
                 if feature_map.ndim == 2:  # Ensure it's a valid 2D map
-                    plt.imshow(feature_map, cmap="viridis", aspect="auto")
+                    # plt.imshow(feature_map, cmap="viridis", aspect="auto")
+                    plt.imshow(feature_map, cmap="viridis", aspect="auto", vmin=None, vmax=None)
                     plt.title(f"{file_name}: {layer_name} - Feature Map {i}")
                     plt.colorbar()
                     plt.show()
