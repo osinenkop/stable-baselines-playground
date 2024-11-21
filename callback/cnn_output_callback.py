@@ -1,5 +1,7 @@
 import os
 import torch
+import numpy as np
+
 from stable_baselines3.common.callbacks import BaseCallback
 
 class SaveCNNOutputCallback(BaseCallback):
@@ -20,12 +22,15 @@ class SaveCNNOutputCallback(BaseCallback):
                 print("Rollout buffer not found, skipping CNN saving.")
                 return True
 
-            # Ensure the observation is properly formatted
+            # Ensure the observation is properly formatted and permuted
             if isinstance(obs_sample, np.ndarray):  # If using NumPy arrays
                 obs_sample = torch.tensor(obs_sample, dtype=torch.float32).to(self.model.device)
             elif isinstance(obs_sample, torch.Tensor):  # If using Torch tensors
                 obs_sample = obs_sample.to(self.model.device)
-            
+
+            # Permute the observation tensor to match PyTorch's expected input shape (N, C, H, W)
+            obs_sample = obs_sample.permute(0, 3, 1, 2)
+
             # Pass the observations through the CNN
             cnn_model = self.model.policy.features_extractor  # Access the custom CNN
             with torch.no_grad():
@@ -41,6 +46,7 @@ class SaveCNNOutputCallback(BaseCallback):
             )
             print(f"Saved CNN outputs at timestep {self.num_timesteps}.")
         return True
+
 
     def _extract_cnn_features(self, observations):
         cnn_model = self.model.policy.features_extractor  # Access the custom CNN
