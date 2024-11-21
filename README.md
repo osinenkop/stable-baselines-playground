@@ -10,11 +10,31 @@ Don't forget to install `tkinter`.
 Typical command to train and evaluate:
 
 ```shell
-python pendulum_ppocalf.py
+python pendulum_ppo.py
 ```
 
 When training is done, just running the evaluation goes as:
 
 ```shell
 python pendulum_ppocalf.py --notrain
+```
+
+## Test PPO with visual pendulum environment
+
+```shell
+python pendulum_visual_ppo.py
+````
+
+## Options
+
+Option | Description |
+| ----- |  ----- |
+| `--notrain` | Skip training, just evaluate |
+| `--console` | Only console output, no live learning curve plot |
+| `--normalize` | Normalize observation |
+
+## Test a CNN for visual pendulum environment
+
+```shell
+python -m test.test_visual_pendulum_simple
 ```
