@@ -1,4 +1,4 @@
-__credits__ = ["Carlos Luis"]
+__credits__ = ["Carlos Luis, Pavel Osinenko"]
 
 import numpy as np
 import gymnasium as gym
@@ -8,79 +8,14 @@ import matplotlib.pyplot as plt
 from os import path
 from typing import Optional
 from gymnasium import spaces
-from gymnasium import ObservationWrapper
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 from gymnasium import spaces  # Import spaces to define the observation space
 from typing import Optional
-
+from gymnasium.spaces import Box
 
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
-
-class NormalizeObservation(ObservationWrapper):
-    def __init__(self, env):
-        super(NormalizeObservation, self).__init__(env)
-        # Modify observation space to reflect normalization
-        obs_shape = self.observation_space.shape
-        self.observation_space = spaces.Box(
-            low=0.0, high=1.0, shape=obs_shape, dtype=np.float32
-        )
-
-    def observation(self, observation):
-        # print(f"Before NormalizeObservation: Min={observation.min()}, Max={observation.max()}, Shape={observation.shape}")
-        normalized_obs = observation / 255.0  # Example normalization logic
-        # print(f"After NormalizeObservation: Min={normalized_obs.min()}, Max={normalized_obs.max()}, Shape={normalized_obs.shape}")
-        return normalized_obs
-
-class ResizeObservation(ObservationWrapper):
-    def __init__(self, env, shape):
-        super(ResizeObservation, self).__init__(env)
-        self.shape = shape
-        self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=(shape[0], shape[1], 3), dtype=np.uint8
-        )
-
-    def observation(self, observation):
-        # Debug: Check if the observation is empty or not
-        if observation is None or observation.size == 0:
-            print("Error: Observation is empty or not properly generated.")
-            raise ValueError("Observation is empty or not properly generated.")
-        
-        # Debug: Print the shape and stats of the observation before resizing
-        # print(f"Original observation shape: {observation.shape}, Min: {observation.min()}, Max: {observation.max()}")
-
-        # Resize the observation using OpenCV
-        resized_observation = cv2.resize(observation, (self.shape[1], self.shape[0]))
-        
-        # Debug: Print the shape and stats of the resized observation
-        # print(f"Resized observation shape: {resized_observation.shape}, Min: {resized_observation.min()}, Max: {resized_observation.max()}")
-        
-        # Debug: plot resized image
-        # image = resized_observation
-        # plt.imshow(image)
-        # plt.title("Resized visual Observation from PendulumVisual")
-        # plt.axis('off')  # Hide axes
-        # plt.show()  # Block execution until the plot is closed    
-
-        # Debug: normalize to [0, 1] for CNN models
-        # resized_observation = resized_observation / 255.0 
-
-        # Debug: plot normalized resized image
-        # image = resized_observation
-        # plt.imshow(image)
-        # plt.title("Resized and normalized visual Observation from PendulumVisual")
-        # plt.axis('off')  # Hide axes
-        # plt.show()  # Block execution until the plot is closed  
-
-        # Debug: Print the shape and stats of the resized observation
-        # print(f"Resized and normalized observation shape: {resized_observation.shape}, Min: {resized_observation.min()}, Max: {resized_observation.max()}")
-
-        # Debug: check final resized image
-        image = resized_observation
-        # print(f"Final resized observation: Min={image.min()}, Max={image.max()}, Shape={image.shape}")
-
-        return resized_observation
 
 class PendulumRenderFix(gym.Env):
     """
@@ -363,10 +298,8 @@ class PendulumRenderFix(gym.Env):
             pygame.quit()
             self.isopen = False
 
-
 def angle_normalize(x):
     return ((x + np.pi) % (2 * np.pi)) - np.pi
-
 
 class PendulumVisual(PendulumRenderFix):
     """

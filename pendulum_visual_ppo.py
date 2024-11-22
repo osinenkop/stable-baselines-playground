@@ -5,19 +5,29 @@ import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
-from model.cnn import CustomCNN
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import NormalizeObservation
-from callback.plotting_callback import PlottingCallback
-from callback.grad_monitor_callback import GradientMonitorCallback
-from callback.cnn_output_callback import SaveCNNOutputCallback
-from stable_baselines3.common.utils import get_linear_fn
-from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import ResizeObservation
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
+from stable_baselines3.common.utils import get_linear_fn
+from stable_baselines3.common.preprocessing import is_image_space
+
+from model.cnn import CustomCNN
+
+from mygym.my_pendulum import PendulumVisual
+
+from wrapper.pendulum_wrapper import NormalizeObservation
+from wrapper.pendulum_wrapper import ResizeObservation
+from wrapper.pendulum_wrapper import EnsureChannelsLastWrapper
+
+from callback.plotting_callback import PlottingCallback
+from callback.grad_monitor_callback import GradientMonitorCallback
+from callback.cnn_output_callback import SaveCNNOutputCallback
+
+from gymnasium.wrappers import TimeLimit
+from gymnasium.wrappers.frame_stack import FrameStack
+
 from agent.debug_ppo import DebugPPO
+
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 
 # Global parameters
@@ -49,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
     args = parser.parse_args()
 
-    # Call the function to clean the folder
+    # Call the function to clean the CNN outputs folder
     clean_cnn_outputs("./cnn_outputs")
 
     # Check if the --console flag is used
@@ -60,35 +70,40 @@ if __name__ == "__main__":
     # Function to create the environment and set the seed
     def make_env(seed):
         def _init():
+            # Create the base environment
             env = PendulumVisual()
             env = TimeLimit(env, max_episode_steps=episode_timesteps)  # Set a maximum number of steps per episode
             env = ResizeObservation(env, (image_height, image_width))  # Resize the observation
-            # env = NormalizeObservation(env)  # Normalize observations
-            env.reset(seed=seed)  # Set the seed using the new method
+
+            # Set the seed before wrapping
+            env.reset(seed=seed)  # Set the seed for the base environment
+
+            # Apply wrappers
+            env = EnsureChannelsLastWrapper(env)
+            env = FrameStack(env, num_stack=4)
+
             return env
         return _init
 
     # Use SubprocVecEnv to run environments in parallel
     env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
+    print(f"Observation space before VecTransposeImage: {env.observation_space}")
+
+    obs = env.reset()
+    print(f"Sample observation shape: {obs.shape}")
+
+    print(f"Is observation space an image? {is_image_space(env.observation_space)}")
+
+    # Apply VecTransposeImage to the entire SubprocVecEnv
     env = VecTransposeImage(env)
 
-    # Test the raw environment output
-    # sample_env = PendulumVisual(render_mode="rgb_array")
-    # sample_env = ResizeObservation(sample_env, (64, 64))
-    # sample_obs, _ = sample_env.reset()
-    # print(f"Raw environment output: Min={sample_obs.min()}, Max={sample_obs.max()}, Shape={sample_obs.shape}")
+    print(f"Final env observation space: {env.observation_space}")
+    input("Press Enter to continue...")
 
-    # sample_env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
-    # sample_env = VecTransposeImage(sample_env)  # Ensure proper image format
-    # sample_obs = sample_env.reset()
-    # print(f"Observations after wrapping: Min={sample_obs.min()}, Max={sample_obs.max()}, Shape={sample_obs.shape}")
-
-    # print(f"Observation shape after VecTransposeImage: {env.observation_space.shape}")
-
-    # print(f"Final env observation space: {env.observation_space}")
-
-    # input("Press Enter to continue...")
+    # Debug: sample observation
+    obs = env.reset()
+    print(f"Sample observation shape: {obs.shape}")
 
     # Apply reward and observation normalization if --normalize flag is provided
     if args.normalize:
@@ -98,17 +113,13 @@ if __name__ == "__main__":
     obs = env.reset()
     print("Environment reset successfully.")
 
-    # print(f"Raw observation shape: {obs.shape}")
-
-    # print(f"Initial observation stats: Min={obs.min()}, Max={obs.max()}, Shape={obs.shape}")
-
     # Set random seed for reproducibility
     set_random_seed(42)
 
     # Define the policy_kwargs to use the custom CNN
     policy_kwargs = dict(
         features_extractor_class=CustomCNN,
-        features_extractor_kwargs=dict(features_dim=256)
+        features_extractor_kwargs=dict(features_dim=256, num_frames=4)  # Adjust num_frames as needed
     )
 
     # Create the PPO agent using the custom feature extractor
@@ -126,27 +137,11 @@ if __name__ == "__main__":
     )
     print("Model initialized successfully.")
 
-    # Debug:
-    # sample_obs = np.random.randint(0, 256, size=(1, 3, 64, 64)).astype(np.float32) / 255.0
-    # sample_obs = torch.tensor(sample_obs).to(model.device)
-    # cnn_features = model.policy.features_extractor(sample_obs)
-    # print(f"CNN features: {cnn_features}")
-
-    # begin----Callbacks----
-
-    # Predefine a fixed sample of observations (e.g., from a single environment reset)
-    # sample_env = PendulumVisual(render_mode="rgb_array")
-    # sample_env = ResizeObservation(sample_env, (image_height, image_width))
-    # sample_env = NormalizeObservation(sample_env)
-    # sample_obs, _ = sample_env.reset()
-
-    # Ensure the sample is properly shaped for the CNN
-    # sample_obs = np.expand_dims(sample_obs, axis=0)  # Add batch dimension if needed
-
     # Set up the SaveCNNOutputCallback
     cnn_output_callback = SaveCNNOutputCallback(
-        save_path="./cnn_outputs", 
-        every_n_steps=n_steps   # Means save CNN features every time the policy gets updated
+        save_path="./cnn_outputs",
+        every_n_steps=n_steps,  # Save every so many training steps
+        max_channels=3      # Visualize up to 3 channels per layer
     )
 
     # Set up a checkpoint callback to save the model every 'save_freq' steps
@@ -168,7 +163,12 @@ if __name__ == "__main__":
         print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
 
     # Combine both callbacks using CallbackList
-    callback = CallbackList([checkpoint_callback, plotting_callback, gradient_monitor_callback, cnn_output_callback])
+    callback = CallbackList([
+        checkpoint_callback,
+        plotting_callback,
+        gradient_monitor_callback,
+        cnn_output_callback
+        ])
 
     # end----Callbacks----
 
