@@ -3,6 +3,7 @@ __credits__ = ["Carlos Luis"]
 import numpy as np
 import gymnasium as gym
 import cv2
+import matplotlib.pyplot as plt
 
 from os import path
 from typing import Optional
@@ -27,8 +28,10 @@ class NormalizeObservation(ObservationWrapper):
         )
 
     def observation(self, observation):
-        # Scale pixel values to [0, 1]
-        return observation / 255.0
+        # print(f"Before NormalizeObservation: Min={observation.min()}, Max={observation.max()}, Shape={observation.shape}")
+        normalized_obs = observation / 255.0  # Example normalization logic
+        # print(f"After NormalizeObservation: Min={normalized_obs.min()}, Max={normalized_obs.max()}, Shape={normalized_obs.shape}")
+        return normalized_obs
 
 class ResizeObservation(ObservationWrapper):
     def __init__(self, env, shape):
@@ -44,15 +47,39 @@ class ResizeObservation(ObservationWrapper):
             print("Error: Observation is empty or not properly generated.")
             raise ValueError("Observation is empty or not properly generated.")
         
-        # Debug: Print the shape of the observation before resizing
-        # print("Original observation shape:", observation.shape)
-        
+        # Debug: Print the shape and stats of the observation before resizing
+        # print(f"Original observation shape: {observation.shape}, Min: {observation.min()}, Max: {observation.max()}")
+
         # Resize the observation using OpenCV
         resized_observation = cv2.resize(observation, (self.shape[1], self.shape[0]))
         
-        # Debug: Print the shape of the resized observation
-        # print("Resized observation shape:", resized_observation.shape)
+        # Debug: Print the shape and stats of the resized observation
+        # print(f"Resized observation shape: {resized_observation.shape}, Min: {resized_observation.min()}, Max: {resized_observation.max()}")
         
+        # Debug: plot resized image
+        # image = resized_observation
+        # plt.imshow(image)
+        # plt.title("Resized visual Observation from PendulumVisual")
+        # plt.axis('off')  # Hide axes
+        # plt.show()  # Block execution until the plot is closed    
+
+        # Debug: normalize to [0, 1] for CNN models
+        # resized_observation = resized_observation / 255.0 
+
+        # Debug: plot normalized resized image
+        # image = resized_observation
+        # plt.imshow(image)
+        # plt.title("Resized and normalized visual Observation from PendulumVisual")
+        # plt.axis('off')  # Hide axes
+        # plt.show()  # Block execution until the plot is closed  
+
+        # Debug: Print the shape and stats of the resized observation
+        # print(f"Resized and normalized observation shape: {resized_observation.shape}, Min: {resized_observation.min()}, Max: {resized_observation.max()}")
+
+        # Debug: check final resized image
+        image = resized_observation
+        # print(f"Final resized observation: Min={image.min()}, Max={image.max()}, Shape={image.shape}")
+
         return resized_observation
 
 class PendulumRenderFix(gym.Env):
@@ -360,7 +387,12 @@ class PendulumVisual(PendulumRenderFix):
         # Reset using the custom environment's method
         obs, info = super().reset(seed=seed, options=options)
 
+        # print(f"Raw observation from PendulumVisual: Min={obs.min()}, Max={obs.max()}, Shape={obs.shape}")
+
         image = self.render()  # Get the image-based observation
+
+        # Debug: Plot raw image
+        # self._plot_image(image)
 
         # Render image for the agent if in "rgb_array" mode
         if self.render_mode == "rgb_array":
@@ -376,10 +408,19 @@ class PendulumVisual(PendulumRenderFix):
     def step(self, action):
         # Step using the custom environment's method
         obs, reward, done, truncated, info = super().step(action)
+        # print(f"Render mode is {self.render_mode}")
 
         # Render image for the agent if in "rgb_array" mode
         if self.render_mode == "rgb_array":
             image = self.render()
+
+            # print(f"Raw observation from PendulumVisual: Min={image.min()}, Max={image.max()}, Shape={image.shape}")
+
+            # print(f"Final preprocessed observation before CNN: Min={image.min()}, Max={image.max()}")
+
+            # Debug: Plot raw image
+            # self._plot_image(image)
+
             # Check if the image is valid
             if image is None or image.size == 0:
                 raise ValueError("Rendered image in step() is empty or None.")
@@ -393,3 +434,10 @@ class PendulumVisual(PendulumRenderFix):
 
     def close(self):
         super().close()  # Call the close method from PendulumRenderFix
+
+    def _plot_image(self, image):
+        """Helper function to plot an image and wait for user to close it before proceeding."""
+        plt.imshow(image)
+        plt.title("Raw Observation from PendulumVisual")
+        plt.axis('off')  # Hide axes
+        plt.show()  # Block execution until the plot is closed        

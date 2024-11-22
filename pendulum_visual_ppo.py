@@ -17,10 +17,12 @@ from mygym.my_pendulum import ResizeObservation
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
+from agent.debug_ppo import DebugPPO
+from utilities.clean_cnn_outputs import clean_cnn_outputs
 
 # Global parameters
 total_timesteps = 131072 * 4
-episode_timesteps = 256
+episode_timesteps = 512
 image_height = 64
 image_width = 64
 save_model_every_steps = 8192 * 4
@@ -29,8 +31,8 @@ parallel_envs = 8
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 512,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 2048,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "n_steps": 256,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
@@ -46,6 +48,9 @@ if __name__ == "__main__":
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
     args = parser.parse_args()
 
+    # Call the function to clean the folder
+    clean_cnn_outputs("./cnn_outputs")
+
     # Check if the --console flag is used
     if args.console:
         import matplotlib
@@ -57,13 +62,32 @@ if __name__ == "__main__":
             env = PendulumVisual()
             env = TimeLimit(env, max_episode_steps=episode_timesteps)  # Set a maximum number of steps per episode
             env = ResizeObservation(env, (image_height, image_width))  # Resize the observation
-            env = NormalizeObservation(env)  # Normalize observations
+            # env = NormalizeObservation(env)  # Normalize observations
             env.reset(seed=seed)  # Set the seed using the new method
             return env
         return _init
 
     # Use SubprocVecEnv to run environments in parallel
     env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
+
+    env = VecTransposeImage(env)
+
+    # Test the raw environment output
+    # sample_env = PendulumVisual(render_mode="rgb_array")
+    # sample_env = ResizeObservation(sample_env, (64, 64))
+    # sample_obs, _ = sample_env.reset()
+    # print(f"Raw environment output: Min={sample_obs.min()}, Max={sample_obs.max()}, Shape={sample_obs.shape}")
+
+    # sample_env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
+    # sample_env = VecTransposeImage(sample_env)  # Ensure proper image format
+    # sample_obs = sample_env.reset()
+    # print(f"Observations after wrapping: Min={sample_obs.min()}, Max={sample_obs.max()}, Shape={sample_obs.shape}")
+
+    # print(f"Observation shape after VecTransposeImage: {env.observation_space.shape}")
+
+    # print(f"Final env observation space: {env.observation_space}")
+
+    # input("Press Enter to continue...")
 
     # Apply reward and observation normalization if --normalize flag is provided
     if args.normalize:
@@ -72,6 +96,10 @@ if __name__ == "__main__":
 
     obs = env.reset()
     print("Environment reset successfully.")
+
+    # print(f"Raw observation shape: {obs.shape}")
+
+    # print(f"Initial observation stats: Min={obs.min()}, Max={obs.max()}, Shape={obs.shape}")
 
     # Set random seed for reproducibility
     set_random_seed(42)
@@ -83,7 +111,7 @@ if __name__ == "__main__":
     )
 
     # Create the PPO agent using the custom feature extractor
-    model = PPO(
+    model = DebugPPO(
         "CnnPolicy",
         env,
         policy_kwargs=policy_kwargs,
@@ -97,21 +125,27 @@ if __name__ == "__main__":
     )
     print("Model initialized successfully.")
 
+    # Debug:
+    # sample_obs = np.random.randint(0, 256, size=(1, 3, 64, 64)).astype(np.float32) / 255.0
+    # sample_obs = torch.tensor(sample_obs).to(model.device)
+    # cnn_features = model.policy.features_extractor(sample_obs)
+    # print(f"CNN features: {cnn_features}")
+
     # begin----Callbacks----
 
     # Predefine a fixed sample of observations (e.g., from a single environment reset)
-    sample_env = PendulumVisual(render_mode="rgb_array")
-    sample_env = ResizeObservation(sample_env, (image_height, image_width))
-    sample_env = NormalizeObservation(sample_env)
-    sample_obs, _ = sample_env.reset()
+    # sample_env = PendulumVisual(render_mode="rgb_array")
+    # sample_env = ResizeObservation(sample_env, (image_height, image_width))
+    # sample_env = NormalizeObservation(sample_env)
+    # sample_obs, _ = sample_env.reset()
 
     # Ensure the sample is properly shaped for the CNN
-    sample_obs = np.expand_dims(sample_obs, axis=0)  # Add batch dimension if needed
+    # sample_obs = np.expand_dims(sample_obs, axis=0)  # Add batch dimension if needed
 
     # Set up the SaveCNNOutputCallback
     cnn_output_callback = SaveCNNOutputCallback(
         save_path="./cnn_outputs", 
-        every_n_steps=500
+        every_n_steps=32
     )
 
     # Set up a checkpoint callback to save the model every 'save_freq' steps

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import sys
+import matplotlib.pyplot as plt
 
 from gymnasium import spaces
 
@@ -9,7 +10,7 @@ class CustomCNN(nn.Module):
         super(CustomCNN, self).__init__()
         # Libraries like Stable-Baselines3 or environments often use the HWC format
         # (Height, Width, Channels), whereas PyTorch's CNN layers expect the CHW format (Channels, Height, Width).
-        n_input_channels = observation_space.shape[2]
+        n_input_channels = observation_space.shape[0]
 
         # print(f"n_input_channels = {n_input_channels}")
 
@@ -30,7 +31,14 @@ class CustomCNN(nn.Module):
             # Libraries like Stable-Baselines3 or environments often use the HWC format
             # (Height, Width, Channels), whereas PyTorch's CNN layers expect the CHW format (Channels, Height, Width). 
             # Here, we fix it          
-            sample_input = torch.zeros(1, *observation_space.shape).permute(0, 3, 1, 2)
+
+            # print(f"Before torch.permute: sample_input.shape = {observation_space.shape}")
+
+            # sample_input = torch.zeros(1, *observation_space.shape).permute(0, 3, 1, 2)
+            sample_input = torch.zeros(1, *observation_space.shape)           
+
+            # print(f"After torch.permute: sample_input.shape = {sample_input.shape}")
+
             n_flatten = self.cnn(sample_input).reshape(sample_input.size(0), -1).shape[1]
 
         # Define the Flatten operation and the linear layer separately
@@ -41,11 +49,27 @@ class CustomCNN(nn.Module):
         self.features_dim = features_dim
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
-        # Pass observations through the CNN and linear layers
-        corrected_observation = observation.permute(0, 3, 1, 2)  # Swap axes to (batch_size, channels, height, width)
+        # Debugging: Print observation shape before correction
+        # print(f"Before permute: observation.shape={observation.shape}")
+        
+        if observation.shape[1] == 3:  # Channels are already the second dimension
+            corrected_observation = observation  # No permutation needed
+        else:
+            corrected_observation = observation.permute(0, 3, 1, 2)  # Convert HWC to CHW
 
-        # print(f"observation.shape = {observation.shape}")
-        # print(f"corrected_observation.shape = {corrected_observation.shape}")
+        # Debugging: Print corrected observation
+        # print(f"Corrected observation shape: {corrected_observation.shape}")
+        # print(f"Corrected observation stats - Min: {corrected_observation.min()}, Max: {corrected_observation.max()}")
+
+        # Debug: plot image as perceived by the CNN
+        # image = observation[-1, :, :, :].permute(1, 2, 0)
+        # plt.imshow(image)
+        # plt.title("Observation from PendulumVisual as perceived by CNN")
+        # plt.axis('off')  # Hide axes
+        # plt.show()  # Block execution until the plot is closed  
+
+        # Debug prints for the observation
+        # print(f"Live observation for CNN (inside forward): {corrected_observation.shape} - Min: {corrected_observation.min()} Max: {corrected_observation.max()}")        
 
         raw_features = self.cnn(corrected_observation)  # Preserve the spatial dimensions here
         flattened_features = self.flatten(raw_features)  # Flatten for the linear layer
@@ -67,32 +91,3 @@ class CustomCNN(nn.Module):
         # print(f"Layer3 output shape: {x.shape}")  # Debugging print
         x = self.cnn[5](x)  # ReLU
         return features
-
-# class SimplifiedCNN(nn.Module):
-#     def __init__(self, observation_space, features_dim=256):
-#         super(SimplifiedCNN, self).__init__()
-#         # Get the shape of the input (C, H, W)
-#         input_shape = observation_space.shape
-
-#         # Define a simpler CNN with fewer layers
-#         self.cnn = nn.Sequential(
-#             nn.Conv2d(input_shape[0], 16, kernel_size=3, stride=2, padding=1),  # Downsampling
-#             nn.ReLU(),
-#             nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # Further downsampling
-#             nn.ReLU(),
-#             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # Final downsampling
-#             nn.ReLU(),
-#             nn.Flatten()
-#         )
-
-#         # Calculate the output size of the CNN
-#         with torch.no_grad():
-#             sample_input = torch.zeros(1, *input_shape)
-#             cnn_output_size = self.cnn(sample_input).shape[1]
-
-#         # Linear layer to map the CNN output to the desired feature dimension
-#         self.linear = nn.Linear(cnn_output_size, features_dim)
-
-#     def forward(self, observations):
-#         x = self.cnn(observations)
-#         return self.linear(x)
