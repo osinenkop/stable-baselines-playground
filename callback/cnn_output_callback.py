@@ -16,11 +16,11 @@ class SaveCNNOutputCallback(BaseCallback):
         if self.n_calls % self.every_n_steps == 0:
             print("Saving CNN output...")
 
-            print(f"Rollout buffer first observation stats: Min={self.model.rollout_buffer.observations[0].min()}, "
-                f"Max={self.model.rollout_buffer.observations[0].max()}, Shape={self.model.rollout_buffer.observations[0].shape}")
+            # print(f"Rollout buffer first observation stats: Min={self.model.rollout_buffer.observations[0].min()}, "
+            #     f"Max={self.model.rollout_buffer.observations[0].max()}, Shape={self.model.rollout_buffer.observations[0].shape}")
 
-            print(f"Rollout buffer last (most recent) observation stats: Min={self.model.rollout_buffer.observations[-1].min()}, "
-                f"Max={self.model.rollout_buffer.observations[-1].max()}, Shape={self.model.rollout_buffer.observations[-1].shape}")
+            # print(f"Rollout buffer last (most recent) observation stats: Min={self.model.rollout_buffer.observations[-1].min()}, "
+            #     f"Max={self.model.rollout_buffer.observations[-1].max()}, Shape={self.model.rollout_buffer.observations[-1].shape}")
 
             # Fetch the most recent observation from the rollout buffer
             try:
@@ -43,17 +43,17 @@ class SaveCNNOutputCallback(BaseCallback):
             elif isinstance(obs_sample, torch.Tensor):  # If using Torch tensors
                 obs_sample = obs_sample.to(self.model.device)
 
-            image = obs_sample[0].permute(1, 2, 0).cpu().numpy()
-            image = (image - image.min()) / (image.max() - image.min())  # Normalize to [0.0, 1.0]
-            plt.imshow(image)
-            plt.title("Image from PendulumVisual as perceived by CNN in callback")
-            plt.axis('off')  # Hide axes
-            plt.show()  # Block execution until the plot is closed 
+            # image = obs_sample[0].permute(1, 2, 0).cpu().numpy()
+            # image = (image - image.min()) / (image.max() - image.min())  # Normalize to [0.0, 1.0]
+            # plt.imshow(image)
+            # plt.title("Image from PendulumVisual as perceived by CNN in callback")
+            # plt.axis('off')  # Hide axes
+            # plt.show()  # Block execution until the plot is closed 
 
             # Permute the observation tensor to match PyTorch's expected input shape (N, C, H, W)
             # obs_sample = obs_sample.permute(0, 3, 1, 2)
 
-            print(f"Observation sent to CNN: Min={obs_sample.min()}, Max={obs_sample.max()}, Shape={obs_sample.shape}")
+            # print(f"Observation sent to CNN: Min={obs_sample.min()}, Max={obs_sample.max()}, Shape={obs_sample.shape}")
 
             # Pass the observations through the CNN
             cnn_model = self.model.policy.features_extractor  # Access the custom CNN

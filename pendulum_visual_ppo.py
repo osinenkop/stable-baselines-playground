@@ -22,17 +22,18 @@ from utilities.clean_cnn_outputs import clean_cnn_outputs
 
 # Global parameters
 total_timesteps = 131072 * 4
-episode_timesteps = 512
+episode_timesteps = 256
 image_height = 64
 image_width = 64
 save_model_every_steps = 8192 * 4
+n_steps = 256
 parallel_envs = 8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
-    "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": 256,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "learning_rate": 4e-3,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 256,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
@@ -145,7 +146,7 @@ if __name__ == "__main__":
     # Set up the SaveCNNOutputCallback
     cnn_output_callback = SaveCNNOutputCallback(
         save_path="./cnn_outputs", 
-        every_n_steps=32
+        every_n_steps=n_steps   # Means save CNN features every time the policy gets updated
     )
 
     # Set up a checkpoint callback to save the model every 'save_freq' steps
