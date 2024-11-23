@@ -38,9 +38,6 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.ReLU()
         )
 
-        # Set the features_dim attribute
-        self.features_dim = features_dim
-
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         return self.linear(self.cnn(observations))
 
