@@ -6,6 +6,22 @@ import matplotlib.pyplot as plt
 from gymnasium.spaces import Box
 from gymnasium import ObservationWrapper
 
+class LoggingWrapper(gym.Wrapper):
+    def step(self, action):
+        print(f"Action: {action}")
+        
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        reward = float(reward)  # Ensure reward is a scalar
+        
+        # Log observation, reward, and done flags
+        print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
+        
+        return obs, reward, terminated, truncated, info
+
+    def reset(self, **kwargs):
+        print(f"Resetting environment with args: {kwargs}")
+        return self.env.reset(**kwargs)
+
 class NormalizeObservation(ObservationWrapper):
     def __init__(self, env):
         super(NormalizeObservation, self).__init__(env)

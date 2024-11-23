@@ -403,9 +403,53 @@ class PendulumRenderFixNoArrow(PendulumRenderFix):
         else:  # mode == "rgb_array":
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
-            )
+            )     
 
-class PendulumVisual(PendulumRenderFixNoArrow):
+class PendulumRenderFixNoArrowParallelizable(PendulumRenderFixNoArrow):
+    """
+    A variant of PendulumRenderFixNoArrow that ensures compatibility with parallel environments.
+    """
+    def __init__(self, render_mode=None, **kwargs):
+        # Initialize parent class with stateless behavior
+        super().__init__(render_mode=render_mode, **kwargs)
+
+    def reset(self, *, seed: int = None, options: dict = None):
+        # Reset the environment
+        obs, info = super().reset(seed=seed, options=options)
+
+        if self.render_mode == "rgb_array":
+            # Render for image-based observations
+            image = self.render()
+            return image, info
+        else:
+            # Return the raw observation for non-image modes
+            return obs, info
+
+    def step(self, action):
+        # Step in the environment
+        obs, reward, done, truncated, info = super().step(action)
+
+        if self.render_mode == "rgb_array":
+            # Render for image-based observations
+            image = self.render()
+            return image, reward, done, truncated, info
+        else:
+            # Return the raw observation for non-image modes
+            return obs, reward, done, truncated, info
+
+    def render(self):
+        # Avoid creating rendering resources during initialization
+        if self.render_mode is None:
+            return None
+        return super().render()
+
+    def close(self):
+        # Ensure resources are properly cleaned up
+        if hasattr(self, "screen") and self.screen is not None:
+            self.screen = None
+        super().close()
+
+class PendulumVisual(PendulumRenderFixNoArrowParallelizable):
     """
     Gym's Pendulum environment modified to provide image-based observations instead of direct state measurements.
     Inherits from PendulumRenderFix to fix rendering issues.
@@ -447,6 +491,10 @@ class PendulumVisual(PendulumRenderFixNoArrow):
         obs, reward, done, truncated, info = super().step(action)
         # print(f"Render mode is {self.render_mode}")
 
+        # Ensure reward is a scalar for single environments or 1D for vectorized
+        if isinstance(reward, np.ndarray):
+            reward = np.squeeze(reward)  # Remove singleton dimensions
+
         # Render image for the agent if in "rgb_array" mode
         if self.render_mode == "rgb_array":
             image = self.render()
@@ -477,4 +525,4 @@ class PendulumVisual(PendulumRenderFixNoArrow):
         plt.imshow(image)
         plt.title("Raw Observation from PendulumVisual")
         plt.axis('off')  # Hide axes
-        plt.show()  # Block execution until the plot is closed        
+        plt.show()  # Block execution until the plot is closed   

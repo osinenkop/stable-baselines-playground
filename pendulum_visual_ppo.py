@@ -19,6 +19,7 @@ from mygym.my_pendulum import PendulumVisual
 
 from wrapper.pendulum_wrapper import NormalizeObservation
 from wrapper.pendulum_wrapper import ResizeObservation
+from wrapper.pendulum_wrapper import LoggingWrapper
 
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
@@ -42,7 +43,7 @@ parallel_envs = 8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
-    "learning_rate": 4e-3,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
     "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
     "batch_size": 256,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
     "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
@@ -58,10 +59,8 @@ if __name__ == "__main__":
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
+    parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
     args = parser.parse_args()
-
-    # Call the function to clean the CNN outputs folder
-    clean_cnn_outputs("./cnn_outputs")
 
     # Check if the --console flag is used
     if args.console:
@@ -72,32 +71,26 @@ if __name__ == "__main__":
     def make_env(seed):
         def _init():
             env = PendulumVisual()
+            # env = LoggingWrapper(env)  # For debugging: log each step. Comment out by default
             env = TimeLimit(env, max_episode_steps=episode_timesteps)
             env = ResizeObservation(env, (image_height, image_width))
             env.reset(seed=seed)
             return env
         return _init
 
-    # Create SubprocVecEnv
-    # env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
-    env = DummyVecEnv([make_env(0)])  # Single-threaded environment
+    # Environment setup based on --single-thread flag
+    if args.single_thread:
+        print("Using single-threaded environment (DummyVecEnv).")
+        env = DummyVecEnv([make_env(0)])
+    else:
+        print("Using multi-threaded environment (SubprocVecEnv).")
+        env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
     # Apply VecFrameStack to stack frames along the channel dimension
     env = VecFrameStack(env, n_stack=4)
 
-    # Debug: Check the final observation space
-    # print(f"Observation space before VecTransposeImage: {env.observation_space}")
-
     # Apply VecTransposeImage
     env = VecTransposeImage(env)
-
-    # Debug: Final check
-    # print(f"Final env observation space: {env.observation_space}")
-    # input("Press Enter to continue...")
-
-    # Debug: sample observation
-    obs = env.reset()
-    print(f"Sample observation shape: {obs.shape}")
 
     # Apply reward and observation normalization if --normalize flag is provided
     if args.normalize:
@@ -131,68 +124,6 @@ if __name__ == "__main__":
     )
     print("Model initialized successfully.")
 
-    # HERE A SHORT TEST OF CNN==============================================
-    from callback.cnn_output_callback import SaveCNNOutputCallback
-
-    print("Testing CNN with stacked frames and callback...")
-
-    # Create the callback instance for testing
-    test_callback = SaveCNNOutputCallback(
-        save_path="./cnn_outputs_test",
-        every_n_steps=1,  # For testing, save at every step
-        max_channels=3    # Visualize up to 3 channels per layer
-    )
-
-    # Generate multiple frames by interacting with the environment
-    num_steps = 10
-    stacked_obs = []
-
-    for i in range(num_steps):
-        print(f"We are at step {i}")
-
-        # Generate a random action
-        random_action = env.action_space.sample()
-        print(f"Random action: {random_action}")
-
-        # Take a step in the environment
-        obs, reward, _, info = env.step(random_action)
-
-        # Get angular velocity and time step
-        angular_velocity = env.envs[0].state[1]  # Assuming the environment state includes angular velocity
-        time_step_ms = env.envs[0].dt * 1000    # Convert time step to milliseconds
-
-        # Debug observation shape
-        print(f"Step {i} observation shape: {obs.shape}")
-
-        # Pass through the CNN and save visualizations
-        stacked_obs.append(obs[0])  # Collect the first environment's observation
-        obs_tensor = torch.tensor(obs[0], dtype=torch.float32).unsqueeze(0).to(model.device)
-
-        with torch.no_grad():
-            cnn_features = model.policy.features_extractor.get_layer_features(obs_tensor)
-
-        # Save the visualization
-        test_callback._save_frame_visualization(
-            obs=obs[0],
-            features=cnn_features,
-            step=i,
-            reward=float(reward),  # Convert to scalar
-            action=float(random_action[0]),  # Extract the scalar value from the array
-            angular_velocity=angular_velocity,
-            time_step_ms=time_step_ms
-        )
-
-    print("Finished visualizing frames and CNN features.")
-
-    input("Press Enter to continue...")
-
-    # Set up the SaveCNNOutputCallback
-    cnn_output_callback = SaveCNNOutputCallback(
-        save_path="./cnn_outputs",
-        every_n_steps=n_steps,  # Save every so many training steps
-        max_channels=3      # Visualize up to 3 channels per layer
-    )
-
     # Set up a checkpoint callback to save the model every 'save_freq' steps
     checkpoint_callback = CheckpointCallback(
         save_freq=save_model_every_steps,  # Save the model periodically
@@ -215,11 +146,8 @@ if __name__ == "__main__":
     callback = CallbackList([
         checkpoint_callback,
         plotting_callback,
-        gradient_monitor_callback,
-        cnn_output_callback
+        gradient_monitor_callback
         ])
-
-    # end----Callbacks----
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
