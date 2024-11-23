@@ -19,7 +19,6 @@ from mygym.my_pendulum import PendulumVisual
 
 from wrapper.pendulum_wrapper import NormalizeObservation
 from wrapper.pendulum_wrapper import ResizeObservation
-from wrapper.pendulum_wrapper import EnsureChannelsLastWrapper
 
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
@@ -87,14 +86,14 @@ if __name__ == "__main__":
     env = VecFrameStack(env, n_stack=4)
 
     # Debug: Check the final observation space
-    print(f"Observation space before VecTransposeImage: {env.observation_space}")
+    # print(f"Observation space before VecTransposeImage: {env.observation_space}")
 
     # Apply VecTransposeImage
     env = VecTransposeImage(env)
 
     # Debug: Final check
-    print(f"Final env observation space: {env.observation_space}")
-    input("Press Enter to continue...")
+    # print(f"Final env observation space: {env.observation_space}")
+    # input("Press Enter to continue...")
 
     # Debug: sample observation
     obs = env.reset()
@@ -133,6 +132,16 @@ if __name__ == "__main__":
     print("Model initialized successfully.")
 
     # HERE A SHORT TEST OF CNN==============================================
+    from callback.cnn_output_callback import SaveCNNOutputCallback
+
+    print("Testing CNN with stacked frames and callback...")
+
+    # Create the callback instance for testing
+    test_callback = SaveCNNOutputCallback(
+        save_path="./cnn_outputs_test",
+        every_n_steps=1,  # For testing, save at every step
+        max_channels=3    # Visualize up to 3 channels per layer
+    )
 
     # Generate multiple frames by interacting with the environment
     num_steps = 10
@@ -141,62 +150,39 @@ if __name__ == "__main__":
     for i in range(num_steps):
         print(f"We are at step {i}")
 
-        # Generate a random action and clip to valid range
+        # Generate a random action
         random_action = env.action_space.sample()
         print(f"Random action: {random_action}")
 
         # Take a step in the environment
-        obs, _, _, info = env.step(random_action)
+        obs, reward, _, info = env.step(random_action)
 
-        # Debug the shape of the observation
+        # Get angular velocity and time step
+        angular_velocity = env.envs[0].state[1]  # Assuming the environment state includes angular velocity
+        time_step_ms = env.envs[0].dt * 1000    # Convert time step to milliseconds
+
+        # Debug observation shape
         print(f"Step {i} observation shape: {obs.shape}")
 
-        stacked_obs.append(obs[0])  # Collect the first environment's observation for simplicity
+        # Pass through the CNN and save visualizations
+        stacked_obs.append(obs[0])  # Collect the first environment's observation
+        obs_tensor = torch.tensor(obs[0], dtype=torch.float32).unsqueeze(0).to(model.device)
 
-    # Visualize the individual frames and corresponding CNN features
-    print(f"Generated {len(stacked_obs)} frames for testing.")
+        with torch.no_grad():
+            cnn_features = model.policy.features_extractor.get_layer_features(obs_tensor)
 
-    # Loop through all stacked observations
-    for frame_idx, frame in enumerate(stacked_obs):  # Iterate through all stacked frames
-        print(f"Visualizing Frame {frame_idx + 1} and its CNN features.")
+        # Save the visualization
+        test_callback._save_frame_visualization(
+            obs=obs[0],
+            features=cnn_features,
+            step=i,
+            reward=float(reward),  # Convert to scalar
+            action=float(random_action[0]),  # Extract the scalar value from the array
+            angular_velocity=angular_velocity,
+            time_step_ms=time_step_ms
+        )
 
-        # Prepare the frame tensor
-        frame_tensor = torch.tensor(frame, dtype=torch.float32).unsqueeze(0).to(model.device)  # Add batch dimension
-
-        # Pass the frame through the CNN
-        cnn_features = model.policy.features_extractor.get_layer_features(frame_tensor)
-
-        # Plot the frame and feature maps as subplots
-        for channel in range(4):  # 4 frames in the stack
-            rgb_frame = frame[channel * 3:(channel + 1) * 3].transpose(1, 2, 0).astype(np.uint8)  # RGB channels for the frame
-
-            # Create a joint plot
-            fig, axes = plt.subplots(1, 4, figsize=(18, 6))
-
-            # Plot the RGB frame
-            axes[0].imshow(rgb_frame)
-            axes[0].set_title(f"Frame {channel + 1} (RGB)")
-            axes[0].axis('off')
-
-            # Plot feature maps from the CNN layers
-            for i, (layer_name, features) in enumerate(cnn_features.items()):
-                if i >= 3:  # Limit to 3 feature maps for neat visualization
-                    break
-
-                # Extract the first channel of the feature map
-                feature_map = features[0, 0].detach().cpu().numpy()
-
-                # Plot the feature map
-                axes[i + 1].imshow(feature_map, cmap="viridis")
-                axes[i + 1].set_title(f"{layer_name} (First Channel)")
-                axes[i + 1].axis('off')
-
-            # Adjust layout and show the plot
-            plt.suptitle(f"Visualization for Stack {frame_idx + 1}, Frame {channel + 1}")
-            plt.tight_layout()
-            plt.show()
-
-    print("Finished visualizing all frames and CNN features.")
+    print("Finished visualizing frames and CNN features.")
 
     input("Press Enter to continue...")
 

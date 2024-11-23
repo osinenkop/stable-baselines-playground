@@ -27,50 +27,38 @@ class SaveCNNOutputCallback(BaseCallback):
 
     def _save_frame_visualization(self, obs, features, step, reward, action, angular_velocity, time_step_ms):
         """
-        Save a visualization combining raw observations and feature maps.
-
-        Args:
-            obs (np.ndarray): Stacked observations.
-            features (dict): CNN layer outputs.
-            step (int): Current training step.
-            reward (float): Current reward.
-            action (float): Current action.
-            angular_velocity (float): True angular velocity.
-            time_step_ms (float): Time step length in milliseconds.
+        Save visualizations of the input frames and corresponding CNN features.
         """
-        # Extract raw RGB frames from stacked observations
-        num_frames = obs.shape[0] // 3  # Assuming RGB channels
-        for frame_idx in range(num_frames):
-            frame = obs[3 * frame_idx: 3 * (frame_idx + 1)].transpose(1, 2, 0)  # HWC format for RGB
-            
-            # Create a figure with subplots
-            fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-            
-            # Plot raw frame
-            axes[0].imshow(frame.astype(np.uint8))
-            axes[0].set_title(f"Frame {frame_idx + 1} (RGB)")
-            axes[0].axis("off")
-            
-            # Plot CNN features
-            for i, (layer_name, layer_features) in enumerate(features.items(), start=1):
-                if i > 3:  # Plot only up to 3 layers
-                    break
-                feature_map = layer_features[0, 0].detach().cpu().numpy()  # First batch, first channel
-                axes[i].imshow(feature_map, cmap="viridis")
-                axes[i].set_title(f"{layer_name} (First Channel)")
-                axes[i].axis("off")
-            
-            # Add a unified title with extra info
-            fig.suptitle(
-                f"Step {step}, Reward: {reward:.2f}, Action: {action:.2f}, "
-                f"Angular Velocity: {angular_velocity:.2f}, Time Step: {time_step_ms:.2f}ms",
-                fontsize=12,
-            )
-            
-            # Save the figure
-            save_path = os.path.join(self.visualization_dir, f"step_{step}_frame_{frame_idx + 1}.png")
-            plt.savefig(save_path)
-            plt.close(fig)
+        save_path = os.path.join(self.save_path, f"frame_step_{step}.png")
+        num_channels = obs.shape[0]  # Total number of input channels (stacked frames)
+
+        fig, axs = plt.subplots(2, num_channels, figsize=(4 * num_channels, 8))
+
+        for idx in range(num_channels):
+            # Handle frame dimensions dynamically
+            input_frame = obs[idx]  # Slice the idx-th channel
+            input_frame = np.squeeze(input_frame)  # Ensure it's 2D (H, W) for visualization
+
+            # Plot input frame
+            axs[0, idx].imshow(input_frame, cmap="viridis")
+            axs[0, idx].set_title(f"Input Frame {idx + 1}")
+            axs[0, idx].axis("off")
+
+            # Plot CNN feature map for the respective channel (if available)
+            if idx < features["layer1"].shape[1]:  # Prevent indexing out of bounds
+                feature_map = features["layer1"][0, idx].detach().cpu().numpy()
+                axs[1, idx].imshow(feature_map, cmap="viridis")
+                axs[1, idx].set_title(f"Feature Map {idx + 1}")
+                axs[1, idx].axis("off")
+
+        fig.suptitle(
+            f"Step {step}, Reward: {float(reward):.2f}, Action: {float(action):.2f}, "
+            f"Angular Velocity: {angular_velocity:.2f}, Time Step: {time_step_ms:.2f} ms",
+            fontsize=16
+        )
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close(fig)
 
     def _on_step(self) -> bool:
         if self.n_calls % self.every_n_steps == 0:
