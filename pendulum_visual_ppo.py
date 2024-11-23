@@ -1,11 +1,13 @@
 import argparse
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.utils import get_linear_fn
@@ -67,37 +69,29 @@ if __name__ == "__main__":
         import matplotlib
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
 
-    # Function to create the environment and set the seed
+    # Function to create the base environment
     def make_env(seed):
         def _init():
-            # Create the base environment
             env = PendulumVisual()
-            env = TimeLimit(env, max_episode_steps=episode_timesteps)  # Set a maximum number of steps per episode
-            env = ResizeObservation(env, (image_height, image_width))  # Resize the observation
-
-            # Set the seed before wrapping
-            env.reset(seed=seed)  # Set the seed for the base environment
-
-            # Apply wrappers
-            env = EnsureChannelsLastWrapper(env)
-            env = FrameStack(env, num_stack=4)
-
+            env = TimeLimit(env, max_episode_steps=episode_timesteps)
+            env = ResizeObservation(env, (image_height, image_width))
+            env.reset(seed=seed)
             return env
         return _init
 
-    # Use SubprocVecEnv to run environments in parallel
+    # Create SubprocVecEnv
     env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
+    # Apply VecFrameStack to stack frames along the channel dimension
+    env = VecFrameStack(env, n_stack=4)
+
+    # Debug: Check the final observation space
     print(f"Observation space before VecTransposeImage: {env.observation_space}")
 
-    obs = env.reset()
-    print(f"Sample observation shape: {obs.shape}")
-
-    print(f"Is observation space an image? {is_image_space(env.observation_space)}")
-
-    # Apply VecTransposeImage to the entire SubprocVecEnv
+    # Apply VecTransposeImage
     env = VecTransposeImage(env)
 
+    # Debug: Final check
     print(f"Final env observation space: {env.observation_space}")
     input("Press Enter to continue...")
 
@@ -136,6 +130,33 @@ if __name__ == "__main__":
         verbose=1,
     )
     print("Model initialized successfully.")
+
+    # HERE A SHORT TEST OF CNN==============================================
+    print("Testing CNN with a sample observation...")
+
+    # Get a single sample observation
+    sample_obs = obs[0]  # Get the first observation from the batch
+    print(f"Sample observation shape (before CNN): {sample_obs.shape}")
+
+    # Convert to PyTorch tensor and add batch dimension
+    sample_obs_tensor = torch.tensor(sample_obs, dtype=torch.float32).unsqueeze(0).to(model.device)
+    print(f"Sample observation tensor shape (for CNN): {sample_obs_tensor.shape}")
+
+    # Pass the observation through the CNN
+    cnn_features = model.policy.features_extractor.get_layer_features(sample_obs_tensor)
+    print("Extracted features from the CNN.")
+
+    # Visualize the feature maps
+    for layer_name, features in cnn_features.items():
+        print(f"Visualizing {layer_name}: {features.shape}")
+        # Visualize the first channel of the first batch
+        feature_map = features[0, 0].detach().cpu().numpy()
+        plt.imshow(feature_map, cmap="viridis")
+        plt.title(f"Feature Map: {layer_name} (First Channel)")
+        plt.colorbar()
+        plt.show()
+
+    input("Press Enter to continue...")
 
     # Set up the SaveCNNOutputCallback
     cnn_output_callback = SaveCNNOutputCallback(
