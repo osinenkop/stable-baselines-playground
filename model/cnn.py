@@ -56,7 +56,7 @@ class CustomCNN(BaseFeaturesExtractor):
         # Pass through the first Conv2d layer
         x = self.cnn[0](x)  # Conv2d(32, ...)
         features["layer1"] = x.clone()  # Save feature map
-        print(f"Layer1 output shape: {x.shape}")  # Optional debug print
+        # print(f"Layer1 output shape: {x.shape}")  # Optional debug print
         
         # Apply ReLU activation
         x = self.cnn[1](x)  # ReLU
@@ -64,7 +64,7 @@ class CustomCNN(BaseFeaturesExtractor):
         # Pass through the second Conv2d layer
         x = self.cnn[2](x)  # Conv2d(64, ...)
         features["layer2"] = x.clone()  # Save feature map
-        print(f"Layer2 output shape: {x.shape}")  # Optional debug print
+        # print(f"Layer2 output shape: {x.shape}")  # Optional debug print
         
         # Apply ReLU activation
         x = self.cnn[3](x)  # ReLU
@@ -72,7 +72,7 @@ class CustomCNN(BaseFeaturesExtractor):
         # Pass through the third Conv2d layer
         x = self.cnn[4](x)  # Conv2d(128, ...)
         features["layer3"] = x.clone()  # Save feature map
-        print(f"Layer3 output shape: {x.shape}")  # Optional debug print
+        # print(f"Layer3 output shape: {x.shape}")  # Optional debug print
         
         # Apply ReLU activation
         x = self.cnn[5](x)  # ReLU
