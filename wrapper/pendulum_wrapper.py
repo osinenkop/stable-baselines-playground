@@ -6,36 +6,6 @@ import matplotlib.pyplot as plt
 from gymnasium.spaces import Box
 from gymnasium import ObservationWrapper
 
-# Wrap to ensure the observation space has channels last
-class EnsureChannelsLastWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        obs_space = env.observation_space
-
-        if len(obs_space.shape) == 3:  # (C, H, W)
-            # Single frame: (C, H, W) -> (H, W, C)
-            self.observation_space = Box(
-                low=obs_space.low.transpose(1, 2, 0),
-                high=obs_space.high.transpose(1, 2, 0),
-                shape=(obs_space.shape[1], obs_space.shape[2], obs_space.shape[0]),
-                dtype=obs_space.dtype,
-            )
-        elif len(obs_space.shape) == 4:  # (stack, C, H, W)
-            # Stacked frames: (stack, C, H, W) -> (stack, H, W, C)
-            self.observation_space = Box(
-                low=obs_space.low.transpose(0, 2, 3, 1),
-                high=obs_space.high.transpose(0, 2, 3, 1),
-                shape=(obs_space.shape[0], obs_space.shape[2], obs_space.shape[3], obs_space.shape[1]),
-                dtype=obs_space.dtype,
-            )
-
-    def observation(self, observation):
-        if observation.ndim == 3:  # Single frame (C, H, W) -> (H, W, C)
-            return observation.transpose(1, 2, 0)
-        elif observation.ndim == 4:  # Stacked frames (stack, C, H, W) -> (stack, H, W, C)
-            return observation.transpose(0, 2, 3, 1)
-        return observation
-
 class NormalizeObservation(ObservationWrapper):
     def __init__(self, env):
         super(NormalizeObservation, self).__init__(env)
