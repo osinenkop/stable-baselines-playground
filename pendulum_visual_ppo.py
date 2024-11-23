@@ -80,7 +80,8 @@ if __name__ == "__main__":
         return _init
 
     # Create SubprocVecEnv
-    env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
+    # env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
+    env = DummyVecEnv([make_env(0)])  # Single-threaded environment
 
     # Apply VecFrameStack to stack frames along the channel dimension
     env = VecFrameStack(env, n_stack=4)
@@ -132,29 +133,70 @@ if __name__ == "__main__":
     print("Model initialized successfully.")
 
     # HERE A SHORT TEST OF CNN==============================================
-    print("Testing CNN with a sample observation...")
 
-    # Get a single sample observation
-    sample_obs = obs[0]  # Get the first observation from the batch
-    print(f"Sample observation shape (before CNN): {sample_obs.shape}")
+    # Generate multiple frames by interacting with the environment
+    num_steps = 10
+    stacked_obs = []
 
-    # Convert to PyTorch tensor and add batch dimension
-    sample_obs_tensor = torch.tensor(sample_obs, dtype=torch.float32).unsqueeze(0).to(model.device)
-    print(f"Sample observation tensor shape (for CNN): {sample_obs_tensor.shape}")
+    for i in range(num_steps):
+        print(f"We are at step {i}")
 
-    # Pass the observation through the CNN
-    cnn_features = model.policy.features_extractor.get_layer_features(sample_obs_tensor)
-    print("Extracted features from the CNN.")
+        # Generate a random action and clip to valid range
+        random_action = env.action_space.sample()
+        print(f"Random action: {random_action}")
 
-    # Visualize the feature maps
-    for layer_name, features in cnn_features.items():
-        print(f"Visualizing {layer_name}: {features.shape}")
-        # Visualize the first channel of the first batch
-        feature_map = features[0, 0].detach().cpu().numpy()
-        plt.imshow(feature_map, cmap="viridis")
-        plt.title(f"Feature Map: {layer_name} (First Channel)")
-        plt.colorbar()
-        plt.show()
+        # Take a step in the environment
+        obs, _, _, info = env.step(random_action)
+
+        # Debug the shape of the observation
+        print(f"Step {i} observation shape: {obs.shape}")
+
+        stacked_obs.append(obs[0])  # Collect the first environment's observation for simplicity
+
+    # Visualize the individual frames and corresponding CNN features
+    print(f"Generated {len(stacked_obs)} frames for testing.")
+
+    # Loop through all stacked observations
+    for frame_idx, frame in enumerate(stacked_obs):  # Iterate through all stacked frames
+        print(f"Visualizing Frame {frame_idx + 1} and its CNN features.")
+
+        # Prepare the frame tensor
+        frame_tensor = torch.tensor(frame, dtype=torch.float32).unsqueeze(0).to(model.device)  # Add batch dimension
+
+        # Pass the frame through the CNN
+        cnn_features = model.policy.features_extractor.get_layer_features(frame_tensor)
+
+        # Plot the frame and feature maps as subplots
+        for channel in range(4):  # 4 frames in the stack
+            rgb_frame = frame[channel * 3:(channel + 1) * 3].transpose(1, 2, 0).astype(np.uint8)  # RGB channels for the frame
+
+            # Create a joint plot
+            fig, axes = plt.subplots(1, 4, figsize=(18, 6))
+
+            # Plot the RGB frame
+            axes[0].imshow(rgb_frame)
+            axes[0].set_title(f"Frame {channel + 1} (RGB)")
+            axes[0].axis('off')
+
+            # Plot feature maps from the CNN layers
+            for i, (layer_name, features) in enumerate(cnn_features.items()):
+                if i >= 3:  # Limit to 3 feature maps for neat visualization
+                    break
+
+                # Extract the first channel of the feature map
+                feature_map = features[0, 0].detach().cpu().numpy()
+
+                # Plot the feature map
+                axes[i + 1].imshow(feature_map, cmap="viridis")
+                axes[i + 1].set_title(f"{layer_name} (First Channel)")
+                axes[i + 1].axis('off')
+
+            # Adjust layout and show the plot
+            plt.suptitle(f"Visualization for Stack {frame_idx + 1}, Frame {channel + 1}")
+            plt.tight_layout()
+            plt.show()
+
+    print("Finished visualizing all frames and CNN features.")
 
     input("Press Enter to continue...")
 
