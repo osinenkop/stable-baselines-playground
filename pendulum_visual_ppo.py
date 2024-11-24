@@ -2,6 +2,7 @@ import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import signal
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
@@ -33,13 +34,14 @@ from gymnasium.wrappers.frame_stack import FrameStack
 from agent.debug_ppo import DebugPPO
 
 from utilities.clean_cnn_outputs import clean_cnn_outputs
+from utilities.intercept_termination import save_model_and_data, signal_handler
 
 # Global parameters
-total_timesteps = 131072 * 4
+total_timesteps = 131072
 episode_timesteps = 1024
 image_height = 64
 image_width = 64
-save_model_every_steps = 8192 * 4
+save_model_every_steps = 8192 / 4
 n_steps = 1024
 parallel_envs = 8
 
@@ -54,7 +56,15 @@ ppo_hyperparams = {
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
 }
 
-if __name__ == "__main__":
+# Global variables for graceful termination
+is_training = True
+episode_rewards = []  # Collect rewards during training
+gradients = []  # Placeholder for gradients during training
+
+def main():
+    # Register signal handlers
+    signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
+    signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
@@ -71,6 +81,9 @@ if __name__ == "__main__":
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
+
+        # Define a global variable for the training loop
+        is_training = True
 
         # Function to create the base environment
         def make_env(seed):
@@ -155,7 +168,15 @@ if __name__ == "__main__":
             ])
 
         print("Starting training ...")
-        model.learn(total_timesteps=total_timesteps, callback=callback)
+
+        try:
+            model.learn(total_timesteps=total_timesteps, callback=callback)
+        except KeyboardInterrupt:
+            print("Training interrupted. Saving model and data...")
+            save_model_and_data(model, episode_rewards, gradients)
+        finally:
+            print("Training completed or interrupted.")
+
         model.save("ppo_visual_pendulum")
 
         # Save the normalization statistics if --normalize is used
@@ -215,3 +236,6 @@ if __name__ == "__main__":
     # Close the environments
     env_agent.close()
     env_display.close()
+
+if __name__ == "__main__":
+    main()    
