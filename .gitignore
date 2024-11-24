@@ -4,11 +4,16 @@ __pycache__/
 *$py.class
 
 # Local stuff
-cnn_outputs/
-cnn_outputs_test/
+bak/
+.vscode/
+checkpoints/
+test/cnn_outputs/
+test/cnn_outputs_test/
 episode_rewards.csv
 gradients_log.csv
-checkpoints/
+ppo_visual_pendulum.zip
+ppo_pendulum.zip
+vecnormalize_stats.pkl
 
 # C extensions
 *.so
