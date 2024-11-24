@@ -22,8 +22,8 @@ class SaveCNNOutputCallback(BaseCallback):
         os.makedirs(save_path, exist_ok=True)
 
         # Directory for visualizations
-        self.visualization_dir = os.path.join(save_path, "visualizations")
-        os.makedirs(self.visualization_dir, exist_ok=True)
+        # self.visualization_dir = os.path.join(save_path, "visualizations")
+        # os.makedirs(self.visualization_dir, exist_ok=True)
 
     def _save_frame_visualization(self, obs, features, step, reward, action, angular_velocity, time_step_ms):
         """

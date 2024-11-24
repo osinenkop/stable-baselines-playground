@@ -194,8 +194,8 @@ if __name__ == "__main__":
 
     # Run the simulation with the trained agent
     for _ in range(3000):
-        # action, _ = model.predict(obs)
-        action = env_agent.action_space.sample()  # Generate a random action
+        action, _ = model.predict(obs)
+        # action = env_agent.action_space.sample()  # Generate a random action
 
         # Dynamically handle four or five return values
         result = env_agent.step(action)  # Take a step in the environment
