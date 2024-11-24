@@ -5,6 +5,18 @@ import matplotlib.pyplot as plt
 
 from gymnasium.spaces import Box
 from gymnasium import ObservationWrapper
+from gymnasium import Wrapper
+
+class AddTruncatedFlagWrapper(Wrapper):
+    def step(self, action):
+        # Get the original step return values
+        result = self.env.step(action)
+        # Add `truncated` as False if only four values are returned
+        if len(result) == 4:
+            obs, reward, done, info = result
+            truncated = False
+            return obs, reward, done, truncated, info
+        return result
 
 class LoggingWrapper(gym.Wrapper):
     def step(self, action):

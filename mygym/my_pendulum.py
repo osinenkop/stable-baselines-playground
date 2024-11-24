@@ -161,28 +161,10 @@ class PendulumRenderFix(gym.Env):
 
         assert np.all(np.isfinite(self.state)), f"Invalid state: {self.state}"
 
+        # Ensure that self.last_u is updated with the most recent action
+        self.last_u = u     
+
         return self._get_obs(), -costs, False, False, {}
-
-
-    # def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
-    #     super().reset(seed=seed)
-    #     if options is None:
-    #         high = np.array([DEFAULT_X, DEFAULT_Y])
-    #     else:
-    #         # Note that if you use custom reset bounds, it may lead to out-of-bound
-    #         # state/observations.
-    #         x = options.get("x_init") if "x_init" in options else DEFAULT_X
-    #         y = options.get("y_init") if "y_init" in options else DEFAULT_Y
-    #         x = utils.verify_number_and_cast(x)
-    #         y = utils.verify_number_and_cast(y)
-    #         high = np.array([x, y])
-    #     low = -high  # We enforce symmetric limits.
-    #     self.state = self.np_random.uniform(low=low, high=high)
-    #     self.last_u = None
-
-    #     if self.render_mode == "human":
-    #         self.render()
-    #     return self._get_obs(), {}
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
@@ -277,14 +259,17 @@ class PendulumRenderFix(gym.Env):
 
         fname = path.join(path.dirname(__file__), "assets/clockwise.png")
         img = pygame.image.load(fname)
+
         if self.last_u is not None:
+
             # Fix: use conversion to integer for mitigating pygame error
-            scale_img = pygame.transform.smoothscale(
-                img,
-                (scale * int(np.abs(self.last_u) / 2), scale * int(np.abs(self.last_u) / 2)),
-            )
+            scale_factor = max(0.2, min(1.0, np.abs(self.last_u) / self.max_torque))  # Ensure scale is between 0.2 and 1.0
+            arrow_size = (int(scale_factor * 100), int(scale_factor * 100))  # Define max arrow size
+            scale_img = pygame.transform.smoothscale(img, arrow_size)
+
             is_flip = bool(self.last_u > 0)
             scale_img = pygame.transform.flip(scale_img, is_flip, True)
+
             self.surf.blit(
                 scale_img,
                 (
@@ -449,14 +434,13 @@ class PendulumRenderFixNoArrowParallelizable(PendulumRenderFixNoArrow):
             self.screen = None
         super().close()
 
-class PendulumVisual(PendulumRenderFixNoArrowParallelizable):
+class PendulumVisualNoArrowParallelizable(PendulumRenderFixNoArrowParallelizable):
     """
     Gym's Pendulum environment modified to provide image-based observations instead of direct state measurements.
-    Inherits from PendulumRenderFix to fix rendering issues.
+    Inherits from PendulumRenderFixNoArrowParallelizable to fix rendering issues, remove torque arrow and allowing usage with SubprocVecEnv
     """
     def __init__(self, render_mode="rgb_array", render_during_training=False):
-        # super(PendulumVisual, self).__init__()  # Call the constructor of PendulumRenderFix
-        super(PendulumVisual, self).__init__(render_mode=render_mode)  # Pass render_mode to the parent class
+        super(PendulumVisualNoArrowParallelizable, self).__init__(render_mode=render_mode)  # Pass render_mode to the parent class
 
         self.render_mode = render_mode  # Set the render mode
         
@@ -526,3 +510,80 @@ class PendulumVisual(PendulumRenderFixNoArrowParallelizable):
         plt.title("Raw Observation from PendulumVisual")
         plt.axis('off')  # Hide axes
         plt.show()  # Block execution until the plot is closed   
+
+class PendulumVisual(PendulumRenderFix):
+    """
+    Gym's Pendulum environment modified to provide image-based observations instead of direct state measurements.
+    Inherits from PendulumRenderFix to fix rendering issues.
+    """
+    def __init__(self, render_mode="rgb_array", render_during_training=False):
+        super(PendulumVisual, self).__init__(render_mode=render_mode)  # Pass render_mode to the parent class
+
+        self.render_mode = render_mode  # Set the render mode
+        
+        # Update the observation space to use image dimensions
+        image_shape = (500, 500, 3)
+        self.observation_space = spaces.Box(low=0, high=255, shape=image_shape, dtype=np.uint8)
+
+    def reset(self, *, seed: int = None, options: dict = None):
+        # Reset using the custom environment's method
+        obs, info = super().reset(seed=seed, options=options)
+
+        # print(f"Raw observation from PendulumVisual: Min={obs.min()}, Max={obs.max()}, Shape={obs.shape}")
+
+        image = self.render()  # Get the image-based observation
+
+        # Debug: Plot raw image
+        # self._plot_image(image)
+
+        # Render image for the agent if in "rgb_array" mode
+        if self.render_mode == "rgb_array":
+            image = self.render()
+            # Check if the image is valid
+            if image is None or image.size == 0:
+                raise ValueError("Rendered image in reset() is empty or None.")
+            return image, info
+        else:
+            # If in "human" mode, just return a placeholder observation
+            return obs, info
+
+    def step(self, action):
+        # Step using the custom environment's method
+        obs, reward, done, truncated, info = super().step(action)
+        # print(f"Render mode is {self.render_mode}")
+
+        # Ensure reward is a scalar for single environments or 1D for vectorized
+        if isinstance(reward, np.ndarray):
+            reward = np.squeeze(reward)  # Remove singleton dimensions
+
+        # Render image for the agent if in "rgb_array" mode
+        if self.render_mode == "rgb_array":
+            image = self.render()
+
+            # print(f"Raw observation from PendulumVisual: Min={image.min()}, Max={image.max()}, Shape={image.shape}")
+
+            # print(f"Final preprocessed observation before CNN: Min={image.min()}, Max={image.max()}")
+
+            # Debug: Plot raw image
+            # self._plot_image(image)
+
+            # Check if the image is valid
+            if image is None or image.size == 0:
+                raise ValueError("Rendered image in step() is empty or None.")
+            return image, reward, done, truncated, info
+        else:
+            # If in "human" mode, just return a placeholder observation
+            return obs, reward, done, truncated, info
+
+    def render(self):
+        return super().render()  # Call the render method from PendulumRenderFix
+
+    def close(self):
+        super().close()  # Call the close method from PendulumRenderFix
+
+    def _plot_image(self, image):
+        """Helper function to plot an image and wait for user to close it before proceeding."""
+        plt.imshow(image)
+        plt.title("Raw Observation from PendulumVisual")
+        plt.axis('off')  # Hide axes
+        plt.show()  # Block execution until the plot is closed         
