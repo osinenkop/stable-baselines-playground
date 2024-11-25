@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 import argparse
 
+from controller.modified_PPO import ModPPO
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from gymnasium.wrappers import TimeLimit
@@ -10,6 +11,10 @@ from mygym.my_pendulum import PendulumRenderFix
 # Import the custom callback from callback.py
 from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
+
+from wrapper.calf_wrapper import CALFWrapper
+from vec_env.mod_vec_env import ModVecEnv
+
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
@@ -27,9 +32,17 @@ gym.envs.registration.register(
 )
 
 # Use your custom environment for training
-env = gym.make("PendulumRenderFix-v0")
 
-env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+
+def make_env():
+    def _init():
+        env = gym.make("PendulumRenderFix-v0")
+        env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+        env = CALFWrapper(env)
+        return env
+    return _init
+
+env = ModVecEnv([make_env()])
 
 # Total number of agent-environment interaction steps for training
 total_timesteps = 500000
@@ -58,7 +71,7 @@ ppo_hyperparams = {
 if not args.notrain:
 
     # Create the PPO model with the specified hyperparameters
-    model = PPO(
+    model = ModPPO(
         "MlpPolicy",
         env,
         learning_rate=ppo_hyperparams["learning_rate"],
@@ -87,8 +100,9 @@ else:
 
 # ====Evaluation: animated plot to show trained agent's performance
 
+print("Evaluation...")
 # Now enable rendering with pygame for testing
-import pygame
+# import pygame
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
 # Load the model (if needed)
@@ -98,7 +112,7 @@ model = PPO.load("ppo_pendulum")
 obs, _ = env.reset()
 
 # Initialize pygame and set the display size
-pygame.init()
+# pygame.init()
 # screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
 
 # Run the simulation and render it
