@@ -17,7 +17,7 @@ class CALFWrapper(Wrapper):
                 ret = True
                 print("Activated")
 
-            self.last_value = self.current_value
+                self.last_value = self.current_value
             return ret
 
     def step(self, action):
@@ -41,4 +41,5 @@ class CALFWrapper(Wrapper):
 
     def reset(self, **kwargs):
         print(f"Resetting environment with args: {kwargs}")
+        self.last_value = None
         return self.env.reset(**kwargs)
