@@ -3,9 +3,10 @@ from gymnasium import Wrapper
 
 
 class CALFWrapper(Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, nominal_controller=None):
         super().__init__(env)
         self.last_value = None
+        self.nominal_controller = nominal_controller
     
     def is_filter_activated(self):
         if self.last_value is None:
@@ -21,25 +22,31 @@ class CALFWrapper(Wrapper):
             return ret
 
     def step(self, action):
-        print(f"Action: {action}")
+        # print(f"Action: {action}")
 
         if not hasattr(self, "current_value"):
             raise Exception("No current_value found")
         
         if self.is_filter_activated():
-            chosen_action = np.zeros_like(action)
+            if self.nominal_controller is None:
+                chosen_action = np.zeros_like(action)
+            else:
+                cos_theta, _, angular_velocity = self.last_obs
+                chosen_action = self.nominal_controller.compute(cos_theta, angular_velocity)
         else:
             chosen_action = action
             
         obs, reward, terminated, truncated, info = self.env.step(chosen_action)
         reward = float(reward)  # Ensure reward is a scalar
         
+        self.last_obs = obs
         # Log observation, reward, and done flags
-        print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
+        # print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
         
         return obs, reward, terminated, truncated, info
 
     def reset(self, **kwargs):
         print(f"Resetting environment with args: {kwargs}")
         self.last_value = None
-        return self.env.reset(**kwargs)
+        self.last_obs, info = self.env.reset(**kwargs)
+        return self.last_obs, info

@@ -14,6 +14,7 @@ from stable_baselines3.common.utils import get_linear_fn
 
 from wrapper.calf_wrapper import CALFWrapper
 from vec_env.mod_vec_env import ModVecEnv
+from controller.energybased import EnergyBasedController
 
 
 # Initialize the argument parser
@@ -38,7 +39,8 @@ def make_env():
     def _init():
         env = gym.make("PendulumRenderFix-v0")
         env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-        env = CALFWrapper(env)
+        env = CALFWrapper(env, 
+                          nominal_controller=EnergyBasedController())
         return env
     return _init
 
