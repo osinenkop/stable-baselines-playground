@@ -23,8 +23,9 @@ class CALFWrapper(Wrapper):
                  fallback_policy: CALFNominalWrapper = None, 
                  calf_decay_rate: float = 0.0005,
                  initial_relax_prob: float = 0.5,
+                 relax_prob_step_factor: float = 0.9,
                  relax_prob_base_step_factor: float = 0.9,
-                 relax_prob_episode_factor: float = 0.9):
+                 relax_prob_episode_factor: float = 0.1):
         super().__init__(env)
         self.calf_value = None
         self.fallback_policy = fallback_policy
@@ -38,8 +39,8 @@ class CALFWrapper(Wrapper):
         self.relax_prob_episode_factor = relax_prob_episode_factor
 
         # Intiated with base_step_factor
-        # and dropped after each episode (episode to episode)
-        self.relax_prob_step_factor = relax_prob_base_step_factor
+        # and increase after each episode (episode to episode)
+        self.relax_prob_step_factor = relax_prob_step_factor
 
         # Actual relax prob
         self.initial_relax_prob = initial_relax_prob
@@ -52,7 +53,7 @@ class CALFWrapper(Wrapper):
         self.current_value = value
         self.current_step_n = step
 
-    def is_calf_value_satisfied(self):
+    def is_calf_value_decay(self):
         is_decay = False
 
         if self.calf_value is None:
@@ -61,39 +62,55 @@ class CALFWrapper(Wrapper):
             is_decay = True
             self.calf_activated_count += 1
             self.calf_value = self.current_value
-
+        
+        ## DEBUG {
+        # if is_decay:
+            # print("[DEBUG]: Line 6 Passed")
+        # else:
+            # print("[DEBUG]: Line 6 Fallback")
+        ## }
+        
         return is_decay
     
-    def is_calf_value_decay(self):
+    def is_agent_action_perform(self):
         eps = np.random.random()
-        self.relax_prob = self.relax_prob * self.relax_prob_step_factor ** self.current_step_n
-
+        
         if eps < self.relax_prob or \
-              self.is_calf_value_satisfied():
+              self.is_calf_value_decay():
             return True
         return False
 
+    def update_calf_action(self, agent_action, calf_state):
+        if self.is_agent_action_perform():
+            # print("[DEBUG]: Line 12")
+            self.calf_action = agent_action.copy()
+            
+        else:
+            if self.fallback_policy is None:
+                self.calf_action = np.zeros_like(agent_action)
+            else:
+                # print("[DEBUG]: Line 13")
+                self.calf_action = self.fallback_policy.compute_action(calf_state)
+
     def step(self, action):
+        # print("[DEBUG]: Line 5")
+        obs, reward, terminated, truncated, info = self.env.step(self.calf_action)
+
         if not self.relax_prob_episode_activated:
             self.relax_prob_episode_activated = True
-        # print(f"Action: {action}")
 
         if not hasattr(self, "current_value"):
             raise Exception("No current_value found")
         
-        if self.is_calf_value_decay():
-            calf_action = action.copy()
-            
-        else:
-            if self.fallback_policy is None:
-                calf_action = np.zeros_like(action)
-            else:
-                calf_action = self.fallback_policy.compute_action(self.last_obs)
-            
-        obs, reward, terminated, truncated, info = self.env.step(calf_action)
+        self.update_calf_action(action, obs)
+        
         reward = float(reward)  # Ensure reward is a scalar
         
-        self.last_obs = obs
+        # print("[DEBUG]: Line 14", self.current_step_n)
+        self.relax_prob_step_factor *= 0.9
+        self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
+                                  0, 1)
+        
         # Log observation, reward, and done flags
         # print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
         
@@ -104,11 +121,12 @@ class CALFWrapper(Wrapper):
         print(f"Resetting environment last calf_activated_count: {self.calf_activated_count}")
 
         if self.relax_prob_episode_activated:
-            self.relax_prob_step_factor = self.relax_prob_base_step_factor * \
-                                          self.relax_prob_episode_factor
+            self.relax_prob_step_factor += self.relax_prob_base_step_factor * \
+                                           self.relax_prob_episode_factor
+
         self.relax_prob = self.initial_relax_prob
         self.calf_value = None
         self.calf_activated_count = 0
-        self.last_obs, info = self.env.reset(**kwargs)
-        return self.last_obs, info
+        self.calf_state, info = self.env.reset(**kwargs)
+        return self.calf_state, info
     

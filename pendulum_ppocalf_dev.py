@@ -10,6 +10,7 @@ from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.utils import get_linear_fn
+from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.preprocessing import is_image_space
 
 from model.cnn import CustomCNN
@@ -57,6 +58,14 @@ ppo_hyperparams = {
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
 }
 
+calf_hyperparams = {
+    "calf_decay_rate": 0.001,
+    "initial_relax_prob": 0.2,
+    "relax_prob_step_factor": 0.7,
+    "relax_prob_base_step_factor": 0.9,
+    "relax_prob_episode_factor": 0.1
+}
+
 # Global variables for graceful termination
 is_training = True
 episode_rewards = []  # Collect rewards during training
@@ -98,10 +107,12 @@ def main():
                 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
                 env = CALFWrapper(env, 
                                   fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
-                                  calf_decay_rate=0.001,
-                                  initial_relax_prob=0.8,
-                                  relax_prob_base_step_factor=0.7,
-                                  relax_prob_episode_factor=0.5)
+                                  calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                                  initial_relax_prob=calf_hyperparams["initial_relax_prob"],
+                                  relax_prob_step_factor=calf_hyperparams["relax_prob_step_factor"],
+                                  relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                                  relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                )
                 env.reset(seed=seed)
                 return env
             return _init
@@ -138,6 +149,12 @@ def main():
             verbose=1,
         )
         print("Model initialized successfully.")
+        print("obs:", obs)
+        dummy_action, _ = model.predict(obs)
+        dummy_value = model.policy.predict_values(obs_as_tensor(obs, device="cpu"))
+        env.env_method("update_current_value", dummy_value, 0)
+        env.env_method("update_calf_action", dummy_action, obs[0])
+        
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
         # checkpoint_callback = CheckpointCallback(
@@ -197,7 +214,15 @@ def main():
     # Environment for the agent (using 'rgb_array' mode)
     env_agent = DummyVecEnv([
         lambda: AddTruncatedFlagWrapper(
-            PendulumRenderFix()
+            CALFWrapper(
+                PendulumRenderFix(), 
+                fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
+                relax_prob_step_factor=calf_hyperparams["relax_prob_step_factor"],
+                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+            )   
         )
     ])
 
@@ -207,6 +232,11 @@ def main():
     # Reset the environments
     obs = env_agent.reset()
     env_display.reset()
+
+    dummy_action, _ = model.predict(obs)
+    dummy_value = model.policy.predict_values(obs_as_tensor(obs, device="cpu"))
+    env_agent.env_method("update_current_value", dummy_value, 0)
+    env_agent.env_method("update_calf_action", dummy_action, obs[0])
 
     # Run the simulation with the trained agent
     for _ in range(3000):
