@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 import argparse
 
-from controller.modified_PPO import ModPPO
+from agent.modified_PPO import ModPPO
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from gymnasium.wrappers import TimeLimit
@@ -13,8 +13,8 @@ from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
 
 from wrapper.calf_wrapper import CALFWrapper
-from vec_env.mod_vec_env import ModVecEnv
 from controller.energybased import EnergyBasedController
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 
 # Initialize the argument parser
@@ -44,7 +44,7 @@ def make_env():
         return env
     return _init
 
-env = ModVecEnv([make_env()])
+env = DummyVecEnv([make_env()])
 
 # Total number of agent-environment interaction steps for training
 total_timesteps = 500000

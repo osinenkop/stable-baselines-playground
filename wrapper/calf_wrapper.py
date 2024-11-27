@@ -3,23 +3,32 @@ from gymnasium import Wrapper
 
 
 class CALFWrapper(Wrapper):
-    def __init__(self, env, nominal_controller=None):
+    def __init__(self, 
+                 env, 
+                 fallback_policy=None, 
+                 init_relax_prob=0.5,
+                 calf_decay_rate=0.0005):
         super().__init__(env)
-        self.last_value = None
-        self.nominal_controller = nominal_controller
+        self.calf_value = None
+        self.fallback_policy = fallback_policy
         self.calf_activated_count = 0
+        self.relax_prob = init_relax_prob
+        self.calf_decay_rate = calf_decay_rate
     
-    def is_filter_activated(self):
-        if self.last_value is None:
-            self.last_value = self.current_value
-            return False
-        else:
-            ret = False
-            if self.current_value - self.last_value > 0.0005:
-                ret = True
-                self.calf_activated_count += 1
-                self.last_value = self.current_value
-            return ret
+    def update_values(self, value):
+        self.current_value = value
+
+    def is_calf_value_decay(self):
+        is_decay = False
+
+        if self.calf_value is None:
+            self.calf_value = self.current_value
+        elif self.current_value - self.calf_value > self.calf_decay_rate:
+            is_decay = True
+            self.calf_activated_count += 1
+            self.calf_value = self.current_value
+
+        return is_decay
 
     def step(self, action):
         # print(f"Action: {action}")
@@ -27,15 +36,15 @@ class CALFWrapper(Wrapper):
         if not hasattr(self, "current_value"):
             raise Exception("No current_value found")
         
-        if self.is_filter_activated():
-            chosen_action = action
+        if self.is_calf_value_decay():
+            chosen_action = action.copy()
             
         else:
-            if self.nominal_controller is None:
+            if self.fallback_policy is None:
                 chosen_action = np.zeros_like(action)
             else:
                 cos_theta, _, angular_velocity = self.last_obs
-                chosen_action = self.nominal_controller.compute(cos_theta, angular_velocity)
+                chosen_action = self.fallback_policy.compute(cos_theta, angular_velocity)
             
         obs, reward, terminated, truncated, info = self.env.step(chosen_action)
         reward = float(reward)  # Ensure reward is a scalar
@@ -49,7 +58,8 @@ class CALFWrapper(Wrapper):
     def reset(self, **kwargs):
         print(f"Resetting environment with args: {kwargs}")
         print(f"Resetting environment last calf_activated_count: {self.calf_activated_count}")
-        self.last_value = None
+        self.calf_value = None
         self.calf_activated_count = 0
         self.last_obs, info = self.env.reset(**kwargs)
         return self.last_obs, info
+    
