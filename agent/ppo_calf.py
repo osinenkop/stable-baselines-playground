@@ -11,7 +11,7 @@ from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecEnv
 
 
-class ModPPO(PPO):
+class PPO_CALF(PPO):
     def collect_rollouts(
         self,
         env: VecEnv,
@@ -68,7 +68,7 @@ class ModPPO(PPO):
                     # as we are sampling from an unbounded Gaussian distribution
                     clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
 
-            env.env_method("update_values", values)
+            env.env_method("update_current_value", values)
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
             self.num_timesteps += env.num_envs

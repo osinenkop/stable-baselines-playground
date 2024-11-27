@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import gymnasium as gym
 import argparse
 
-from agent.modified_PPO import ModPPO
+from agent.ppo_calf import PPO_CALF
+
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from gymnasium.wrappers import TimeLimit
@@ -12,10 +13,11 @@ from mygym.my_pendulum import PendulumRenderFix
 from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
 
-from wrapper.calf_wrapper import CALFWrapper
+
+from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
 from controller.energybased import EnergyBasedController
 from stable_baselines3.common.vec_env import DummyVecEnv
-
+    
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
@@ -40,7 +42,7 @@ def make_env():
         env = gym.make("PendulumRenderFix-v0")
         env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
         env = CALFWrapper(env, 
-                          nominal_controller=EnergyBasedController())
+                                  fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()))
         return env
     return _init
 
@@ -73,7 +75,7 @@ ppo_hyperparams = {
 if not args.notrain:
 
     # Create the PPO model with the specified hyperparameters
-    model = ModPPO(
+    model = PPO_CALF(
         "MlpPolicy",
         env,
         learning_rate=ppo_hyperparams["learning_rate"],
@@ -108,7 +110,7 @@ print("Evaluation...")
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
 # Load the model (if needed)
-model = PPO.load("ppo_pendulum")
+model = PPO_CALF.load("ppo_pendulum")
 
 # Reset the environment
 obs, _ = env.reset()

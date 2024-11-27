@@ -2,12 +2,27 @@ import numpy as np
 from gymnasium import Wrapper
 
 
+class CALFNominalWrapper():
+    def __init__(self, controller):
+        self.controller = controller
+
+    def compute_action(self, observation):
+        action = ...
+        return action 
+
+
+class CALFEnergyPendulumWrapper(CALFNominalWrapper):
+    def compute_action(self, observation):
+        cos_theta, _, angular_velocity = observation
+        return self.controller.compute(cos_theta, angular_velocity)
+
+
 class CALFWrapper(Wrapper):
     def __init__(self, 
                  env, 
-                 fallback_policy=None, 
-                 init_relax_prob=0.5,
-                 calf_decay_rate=0.0005):
+                 fallback_policy: CALFNominalWrapper = None, 
+                 init_relax_prob: float = 0.5,
+                 calf_decay_rate: float = 0.0005):
         super().__init__(env)
         self.calf_value = None
         self.fallback_policy = fallback_policy
@@ -15,7 +30,7 @@ class CALFWrapper(Wrapper):
         self.relax_prob = init_relax_prob
         self.calf_decay_rate = calf_decay_rate
     
-    def update_values(self, value):
+    def update_current_value(self, value):
         self.current_value = value
 
     def is_calf_value_decay(self):
@@ -37,16 +52,15 @@ class CALFWrapper(Wrapper):
             raise Exception("No current_value found")
         
         if self.is_calf_value_decay():
-            chosen_action = action.copy()
+            calf_action = action.copy()
             
         else:
             if self.fallback_policy is None:
-                chosen_action = np.zeros_like(action)
+                calf_action = np.zeros_like(action)
             else:
-                cos_theta, _, angular_velocity = self.last_obs
-                chosen_action = self.fallback_policy.compute(cos_theta, angular_velocity)
+                calf_action = self.fallback_policy.compute_action(self.last_obs)
             
-        obs, reward, terminated, truncated, info = self.env.step(chosen_action)
+        obs, reward, terminated, truncated, info = self.env.step(calf_action)
         reward = float(reward)  # Ensure reward is a scalar
         
         self.last_obs = obs

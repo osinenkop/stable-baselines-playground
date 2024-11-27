@@ -1,9 +1,6 @@
 import argparse
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-import gymnasium as gym
 import signal
+import matplotlib
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import set_random_seed
@@ -17,13 +14,11 @@ from stable_baselines3.common.preprocessing import is_image_space
 
 from model.cnn import CustomCNN
 
-from agent.modified_PPO import ModPPO
+from agent.ppo_calf import PPO_CALF
 
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import PendulumVisualNoArrowParallelizable
+from mygym.my_pendulum import PendulumRenderFix
 
 from wrapper.pendulum_wrapper import NormalizeObservation
-from wrapper.pendulum_wrapper import ResizeObservation
 from wrapper.pendulum_wrapper import LoggingWrapper
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
@@ -39,7 +34,7 @@ from agent.debug_ppo import DebugPPO
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
 
-from wrapper.calf_wrapper import CALFWrapper
+from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
 from controller.energybased import EnergyBasedController
 
 # Global parameters
@@ -49,7 +44,7 @@ image_height = 64
 image_width = 64
 save_model_every_steps = 8192 / 4
 n_steps = 1024
-parallel_envs = 8
+parallel_envs = 1
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
@@ -67,6 +62,7 @@ is_training = True
 episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
+
 def main():
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
@@ -75,15 +71,19 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
-    parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
+    parser.add_argument("--console", action="store_true", 
+                        help="Disable graphical output for console-only mode")
+    parser.add_argument("--normalize", action="store_true", 
+                        help="Enable observation and reward normalization")
+    parser.add_argument("--single-thread", action="store_true", default=True,
+                        help="Use DummyVecEnv for single-threaded environment")
     args = parser.parse_args()
 
     # Check if the --console flag is used
     if args.console:
-        import matplotlib
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
+    else:
+        matplotlib.use("TkAgg") 
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
@@ -94,10 +94,10 @@ def main():
         # Function to create the base environment
         def make_env(seed):
             def _init():
-                env = gym.make("PendulumRenderFix-v0")
+                env = PendulumRenderFix()
                 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
                 env = CALFWrapper(env, 
-                                  fallback_policy=EnergyBasedController())
+                                  fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()))
                 env.reset(seed=seed)
                 return env
             return _init
@@ -110,12 +110,6 @@ def main():
             print("Using multi-threaded environment (SubprocVecEnv).")
             env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
 
-        # Apply VecFrameStack to stack frames along the channel dimension
-        env = VecFrameStack(env, n_stack=4)
-
-        # Apply VecTransposeImage
-        env = VecTransposeImage(env)
-
         # Apply reward and observation normalization if --normalize flag is provided
         if args.normalize:
             env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
@@ -127,17 +121,10 @@ def main():
         # Set random seed for reproducibility
         set_random_seed(42)
 
-        # Define the policy_kwargs to use the custom CNN
-        policy_kwargs = dict(
-            features_extractor_class=CustomCNN,
-            features_extractor_kwargs=dict(features_dim=256, num_frames=4)  # Adjust num_frames as needed
-        )
-
         # Create the PPO agent using the custom feature extractor
-        model = ModPPO(
-            "CnnPolicy",
+        model = PPO_CALF(
+            "MlpPolicy",
             env,
-            policy_kwargs=policy_kwargs,
             learning_rate=ppo_hyperparams["learning_rate"],
             n_steps=ppo_hyperparams["n_steps"],
             batch_size=ppo_hyperparams["batch_size"],
@@ -149,17 +136,17 @@ def main():
         print("Model initialized successfully.")
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
-        checkpoint_callback = CheckpointCallback(
-            save_freq=save_model_every_steps,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
-            name_prefix="ppo_visual_pendulum"
-        )
+        # checkpoint_callback = CheckpointCallback(
+        #     save_freq=save_model_every_steps,  # Save the model periodically
+        #     save_path="./checkpoints",  # Directory to save the model
+        #     name_prefix="ppo_calf_pendulum"
+        # )
 
         # Instantiate a plotting callback to show the live learning curve
         plotting_callback = PlottingCallback()
 
         # Instantiate the GradientMonitorCallback
-        gradient_monitor_callback = GradientMonitorCallback()    
+        # gradient_monitor_callback = GradientMonitorCallback()
 
         # If --console flag is set, disable the plot and just save the data
         if args.console:
@@ -168,9 +155,9 @@ def main():
 
         # Combine both callbacks using CallbackList
         callback = CallbackList([
-            checkpoint_callback,
+            # checkpoint_callback,
             plotting_callback,
-            gradient_monitor_callback
+            # gradient_monitor_callback
             ])
 
         print("Starting training ...")
@@ -183,7 +170,7 @@ def main():
         finally:
             print("Training completed or interrupted.")
 
-        model.save("ppo_visual_pendulum")
+        model.save("ppo_calf_pendulum")
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
@@ -192,7 +179,7 @@ def main():
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
-        model = PPO.load("ppo_visual_pendulum")
+        model = PPO_CALF.load("ppo_calf_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
@@ -206,14 +193,12 @@ def main():
     # Environment for the agent (using 'rgb_array' mode)
     env_agent = DummyVecEnv([
         lambda: AddTruncatedFlagWrapper(
-            ResizeObservation(PendulumVisual(render_mode="rgb_array"), (image_height, image_width))
+            PendulumRenderFix()
         )
     ])
-    env_agent = VecFrameStack(env_agent, n_stack=4)
-    env_agent = VecTransposeImage(env_agent)
 
     # Environment for visualization (using 'human' mode)
-    env_display = PendulumVisual(render_mode="human")
+    env_display = PendulumRenderFix(render_mode="human")
 
     # Reset the environments
     obs = env_agent.reset()
