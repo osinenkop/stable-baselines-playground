@@ -148,13 +148,7 @@ def main():
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
         )
-        print("Model initialized successfully.")
-        print("obs:", obs)
-        dummy_action, _ = model.predict(obs)
-        dummy_value = model.policy.predict_values(obs_as_tensor(obs, device="cpu"))
-        env.env_method("update_current_value", dummy_value, 0)
-        env.env_method("update_calf_action", dummy_action, obs[0])
-        
+        print("Model initialized successfully.")        
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
         # checkpoint_callback = CheckpointCallback(
@@ -232,11 +226,6 @@ def main():
     # Reset the environments
     obs = env_agent.reset()
     env_display.reset()
-
-    dummy_action, _ = model.predict(obs)
-    dummy_value = model.policy.predict_values(obs_as_tensor(obs, device="cpu"))
-    env_agent.env_method("update_current_value", dummy_value, 0)
-    env_agent.env_method("update_calf_action", dummy_action, obs[0])
 
     # Run the simulation with the trained agent
     for _ in range(3000):

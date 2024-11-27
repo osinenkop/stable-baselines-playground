@@ -28,6 +28,7 @@ class CALFWrapper(Wrapper):
                  relax_prob_episode_factor: float = 0.1):
         super().__init__(env)
         self.calf_value = None
+        self.current_value = None
         self.fallback_policy = fallback_policy
         self.calf_activated_count = 0
         self.calf_decay_rate = calf_decay_rate
@@ -55,6 +56,10 @@ class CALFWrapper(Wrapper):
 
     def is_calf_value_decay(self):
         is_decay = False
+
+        # In case before PPO starts learning
+        if self.current_value is None:
+            return is_decay
 
         if self.calf_value is None:
             self.calf_value = self.current_value
@@ -94,7 +99,12 @@ class CALFWrapper(Wrapper):
 
     def step(self, action):
         # print("[DEBUG]: Line 5")
-        obs, reward, terminated, truncated, info = self.env.step(self.calf_action)
+        
+        obs, reward, terminated, truncated, info = self.env.step(
+            getattr(self, 
+                    "calf_action", 
+                    self.fallback_policy.compute_action(self.calf_state))
+        )
 
         if not self.relax_prob_episode_activated:
             self.relax_prob_episode_activated = True
