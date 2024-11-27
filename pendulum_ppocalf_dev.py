@@ -97,7 +97,11 @@ def main():
                 env = PendulumRenderFix()
                 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
                 env = CALFWrapper(env, 
-                                  fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()))
+                                  fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                                  calf_decay_rate=0.001,
+                                  initial_relax_prob=0.8,
+                                  relax_prob_base_step_factor=0.7,
+                                  relax_prob_episode_factor=0.5)
                 env.reset(seed=seed)
                 return env
             return _init
