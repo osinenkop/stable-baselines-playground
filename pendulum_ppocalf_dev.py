@@ -61,9 +61,8 @@ ppo_hyperparams = {
 calf_hyperparams = {
     "calf_decay_rate": 0.001,
     "initial_relax_prob": 0.2,
-    "relax_prob_step_factor": 0.7,
     "relax_prob_base_step_factor": 0.9,
-    "relax_prob_episode_factor": 0.1
+    "relax_prob_episode_factor": 1.1
 }
 
 # Global variables for graceful termination
@@ -109,7 +108,6 @@ def main():
                                   fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                                   calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                                   initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                                  relax_prob_step_factor=calf_hyperparams["relax_prob_step_factor"],
                                   relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
                                   relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
                 )
@@ -213,7 +211,6 @@ def main():
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                relax_prob_step_factor=calf_hyperparams["relax_prob_step_factor"],
                 relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
                 relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
             )   
