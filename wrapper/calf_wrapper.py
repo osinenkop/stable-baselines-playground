@@ -56,6 +56,7 @@ class CALFWrapper(Wrapper):
 
     
     def update_current_value(self, value, step):
+        # Receive state-value from agent
         self.current_value = value
         self.current_step_n = step
 
@@ -68,9 +69,13 @@ class CALFWrapper(Wrapper):
 
         if self.calf_value is None:
             self.calf_value = self.current_value
-        elif self.current_value - self.calf_value > self.calf_decay_rate:
+
+        # V̂_w (st) − V̂_w(s†) ≥ ν̄
+        elif self.current_value - self.calf_value >= self.calf_decay_rate:
             is_decay = True
             self.calf_decay_count += 1
+
+            # store V̂_w(s†)
             self.calf_value = self.current_value
         
         ## DEBUG {
@@ -86,6 +91,8 @@ class CALFWrapper(Wrapper):
         eps = np.random.random()
         
         self.logger.record("calf/last_relax_prob", self.relax_prob)
+
+        # print("[DEBUG]: Line 11")
         if eps < self.relax_prob or \
               self.is_calf_value_decay():
             self.calf_activated_count += 1
@@ -101,12 +108,12 @@ class CALFWrapper(Wrapper):
             if self.fallback_policy is None:
                 self.calf_action = np.zeros_like(agent_action)
             else:
-                # print("[DEBUG]: Line 13")
+                # print("[DEBUG]: Line 14")
                 self.calf_action = self.fallback_policy.compute_action(calf_state)
 
     def step(self, action):
         # print("[DEBUG]: Line 5")
-        
+        # At step 0, self.calf_state was received from reset
         obs, reward, terminated, truncated, info = self.env.step(
             getattr(self, 
                     "calf_action", 
@@ -123,7 +130,7 @@ class CALFWrapper(Wrapper):
         
         reward = float(reward)  # Ensure reward is a scalar
         
-        # print("[DEBUG]: Line 14", self.current_step_n)
+        # print("[DEBUG]: Line 16", self.current_step_n)
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)
         
