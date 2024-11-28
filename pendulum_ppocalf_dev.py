@@ -32,6 +32,7 @@ from gymnasium.wrappers.frame_stack import FrameStack
 
 from agent.debug_ppo import DebugPPO
 
+from utilities.mlflow_logger import mlflow_monotoring, add_ml_logger
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
 
@@ -71,7 +72,8 @@ episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
 
-def main():
+@mlflow_monotoring
+def main(**kwarg):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
@@ -146,6 +148,10 @@ def main():
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
         )
+
+        if kwarg.get("use_mlflow"):
+            add_ml_logger(model)
+        
         print("Model initialized successfully.")        
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
