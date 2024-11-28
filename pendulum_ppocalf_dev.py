@@ -190,8 +190,6 @@ def main(args, **kwargs):
         if args.normalize:
             env.save("vecnormalize_stats.pkl")
 
-        env.save("calf_env.pkl")
-
         print("Training completed.")
 
         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1)
