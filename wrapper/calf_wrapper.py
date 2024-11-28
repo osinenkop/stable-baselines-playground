@@ -69,7 +69,6 @@ class CALFWrapper(Wrapper):
         if self.calf_value is None:
             self.calf_value = self.current_value
         elif self.current_value - self.calf_value > self.calf_decay_rate:
-        # elif self.calf_value - self.current_value > self.calf_decay_rate:
             is_decay = True
             self.calf_decay_count += 1
             self.calf_value = self.current_value
