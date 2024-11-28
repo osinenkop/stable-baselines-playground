@@ -65,7 +65,7 @@ calf_hyperparams = {
     "calf_decay_rate": 0.001,
     "initial_relax_prob": 0.4,
     "relax_prob_base_step_factor": 0.9,
-    "relax_prob_episode_factor": 0.1
+    "relax_prob_episode_factor": 0.01
 }
 
 # Global variables for graceful termination

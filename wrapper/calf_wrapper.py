@@ -134,7 +134,6 @@ class CALFWrapper(Wrapper):
         return obs, reward, terminated, truncated, info
     
     def reset_internal_params(self):
-        self.logger.record("calf/init_relax_prob", self.relax_prob)
         self.logger.record("calf/calf_value", self.calf_value)
         self.logger.record("calf/current_value", self.current_value)
         self.logger.record("calf/calf_decay_count", self.calf_decay_count)
@@ -142,12 +141,16 @@ class CALFWrapper(Wrapper):
 
         if self.relax_prob_episode_activated:
             self.relax_prob_step_factor = self.relax_prob_base_step_factor
-            self.relax_prob = np.clip(
-                self.relax_prob + self.relax_prob * self.relax_prob_episode_factor,
+            self.initial_relax_prob = np.clip(
+                self.initial_relax_prob + self.initial_relax_prob * self.relax_prob_episode_factor,
                 0, 1)
+            self.relax_prob = self.initial_relax_prob
 
         self.calf_value = None
         self.calf_activated_count = 0
+        self.calf_decay_count = 0
+
+        self.logger.record("calf/init_relax_prob", self.relax_prob)
         print(f"Resetting environment last self.relax_prob: {self.relax_prob}")
 
     def reset(self, **kwargs):
