@@ -12,6 +12,7 @@ from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.utils import get_linear_fn
 from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.preprocessing import is_image_space
+from stable_baselines3.common.evaluation import evaluate_policy
 
 from model.cnn import CustomCNN
 
@@ -32,7 +33,7 @@ from gymnasium.wrappers.frame_stack import FrameStack
 
 from agent.debug_ppo import DebugPPO
 
-from utilities.mlflow_logger import mlflow_monotoring, add_ml_logger
+from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
 
@@ -40,7 +41,7 @@ from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
 from controller.energybased import EnergyBasedController
 
 # Global parameters
-total_timesteps = 131072
+total_timesteps = 500000
 episode_timesteps = 1024
 image_height = 64
 image_width = 64
@@ -48,22 +49,23 @@ save_model_every_steps = 8192 / 4
 n_steps = 1024
 parallel_envs = 1
 
+
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
-    "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-    # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
+    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
 }
 
 calf_hyperparams = {
     "calf_decay_rate": 0.001,
-    "initial_relax_prob": 0.2,
+    "initial_relax_prob": 0.4,
     "relax_prob_base_step_factor": 0.9,
-    "relax_prob_episode_factor": 1.1
+    "relax_prob_episode_factor": 0.1
 }
 
 # Global variables for graceful termination
@@ -77,6 +79,10 @@ def main(**kwarg):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
+    
+    hyperparams = kwarg.get("hyperparams")
+    if kwarg.get("use_mlflow"):
+        loggers = get_ml_logger()
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
@@ -108,10 +114,11 @@ def main(**kwarg):
                 env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
                 env = CALFWrapper(env, 
                                   fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
-                                  calf_decay_rate=calf_hyperparams["calf_decay_rate"],
-                                  initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                                  relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
-                                  relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                                  calf_decay_rate=hyperparams["calf_decay_rate"],
+                                  initial_relax_prob=hyperparams["initial_relax_prob"],
+                                  relax_prob_base_step_factor=hyperparams["relax_prob_base_step_factor"],
+                                  relax_prob_episode_factor=hyperparams["relax_prob_episode_factor"],
+                                  logger=loggers
                 )
                 env.reset(seed=seed)
                 return env
@@ -149,8 +156,7 @@ def main(**kwarg):
             verbose=1,
         )
 
-        if kwarg.get("use_mlflow"):
-            add_ml_logger(model)
+        model.set_logger(loggers)
         
         print("Model initialized successfully.")        
 
@@ -196,6 +202,10 @@ def main(**kwarg):
             env.save("vecnormalize_stats.pkl")
 
         print("Training completed.")
+
+        mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1)
+        print("Policy Eval")
+        print(f"mean_reward: {mean_reward}, std_reward: {std_reward}")
     else:
         print("Skipping training. Loading the saved model...")
         model = PPO_CALF.load("ppo_calf_pendulum")
@@ -219,7 +229,7 @@ def main(**kwarg):
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
                 relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
                 relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
-            )   
+            )
         )
     ])
 
@@ -231,7 +241,8 @@ def main(**kwarg):
     env_display.reset()
 
     # Run the simulation with the trained agent
-    for _ in range(3000):
+    # for _ in range(3000):
+    for _ in range(100):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
@@ -255,4 +266,4 @@ def main(**kwarg):
     env_display.close()
 
 if __name__ == "__main__":
-    main()    
+    main(hyperparams=calf_hyperparams)    

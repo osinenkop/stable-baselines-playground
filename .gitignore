@@ -9,6 +9,7 @@ bak/
 checkpoints/
 test/cnn_outputs/
 test/cnn_outputs_test/
+mlruns/
 episode_rewards.csv
 gradients_log.csv
 ppo_visual_pendulum.zip

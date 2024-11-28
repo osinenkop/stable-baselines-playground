@@ -1,5 +1,6 @@
 import numpy as np
 from gymnasium import Wrapper
+from stable_baselines3.common.logger import configure
 
 
 class CALFNominalWrapper():
@@ -24,12 +25,14 @@ class CALFWrapper(Wrapper):
                  calf_decay_rate: float = 0.0005,
                  initial_relax_prob: float = 0.5,
                  relax_prob_base_step_factor: float = 0.9,
-                 relax_prob_episode_factor: float = 0.1):
+                 relax_prob_episode_factor: float = 0.1,
+                 **kwargs):
         super().__init__(env)
         self.calf_value = None
         self.current_value = None
         self.fallback_policy = fallback_policy
         self.calf_activated_count = 0
+        self.calf_decay_count = 0
         self.calf_decay_rate = calf_decay_rate
 
         # Relax prob at the 1st episode and 1st step
@@ -48,6 +51,9 @@ class CALFWrapper(Wrapper):
 
         # Only activate after 1st episode
         self.relax_prob_episode_activated = False
+
+        self.logger = kwargs.get("logger", configure())
+
     
     def update_current_value(self, value, step):
         self.current_value = value
@@ -65,7 +71,7 @@ class CALFWrapper(Wrapper):
         elif self.current_value - self.calf_value > self.calf_decay_rate:
         # elif self.calf_value - self.current_value > self.calf_decay_rate:
             is_decay = True
-            self.calf_activated_count += 1
+            self.calf_decay_count += 1
             self.calf_value = self.current_value
         
         ## DEBUG {
@@ -80,8 +86,10 @@ class CALFWrapper(Wrapper):
     def is_agent_action_perform(self):
         eps = np.random.random()
         
+        self.logger.record("calf/last_relax_prob", self.relax_prob)
         if eps < self.relax_prob or \
               self.is_calf_value_decay():
+            self.calf_activated_count += 1
             return True
         return False
 
@@ -124,20 +132,28 @@ class CALFWrapper(Wrapper):
         # print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
         
         return obs, reward, terminated, truncated, info
-
-    def reset(self, **kwargs):
-        print(f"Resetting environment with args: {kwargs}")
-        print(f"Resetting environment last calf_activated_count: {self.calf_activated_count}")
-        
+    
+    def reset_internal_params(self):
+        self.logger.record("calf/init_relax_prob", self.relax_prob)
+        self.logger.record("calf/calf_value", self.calf_value)
+        self.logger.record("calf/current_value", self.current_value)
+        self.logger.record("calf/calf_decay_count", self.calf_decay_count)
+        self.logger.record("calf/calf_activated_count", self.calf_activated_count)
 
         if self.relax_prob_episode_activated:
-            self.relax_prob_step_factor = self.relax_prob_base_step_factor * \
-                                          self.relax_prob_episode_factor
-            self.relax_prob = self.initial_relax_prob
+            self.relax_prob_step_factor = self.relax_prob_base_step_factor
+            self.relax_prob = np.clip(
+                self.relax_prob + self.relax_prob * self.relax_prob_episode_factor,
+                0, 1)
 
         self.calf_value = None
         self.calf_activated_count = 0
-        self.calf_state, info = self.env.reset(**kwargs)
         print(f"Resetting environment last self.relax_prob: {self.relax_prob}")
+
+    def reset(self, **kwargs):
+        print(f"Resetting environment with args: {kwargs}")
+        
+        self.reset_internal_params()
+        self.calf_state, info = self.env.reset(**kwargs)
         return self.calf_state, info
     
