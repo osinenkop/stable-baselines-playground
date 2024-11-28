@@ -47,23 +47,28 @@ def mlflow_monotoring(func):
         experiment_name = os.path.basename(inspect.stack()[1].filename).split(".")[0]
         run_name = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 
-        if mlflow.active_run() is not None:
-            print("There is an active run.")
+        if len(args) == 1 and \
+                hasattr(args[0], "notrain") and \
+                args[0].notrain:
+            func(*args, **kwargs)
         else:
-            print("No active run.")
+            if mlflow.active_run() is not None:
+                print("There is an active run.")
+            else:
+                print("No active run.")
 
-        if mlflow.get_experiment_by_name(experiment_name) is None:
-            mlflow.create_experiment(experiment_name)
-            
-        mlflow.set_experiment(experiment_name)
+            if mlflow.get_experiment_by_name(experiment_name) is None:
+                mlflow.create_experiment(experiment_name)
+                
+            mlflow.set_experiment(experiment_name)
 
-        print("run_name:", run_name)
-        with mlflow.start_run(run_name=run_name):
-            # log param
-            for key in kwargs:
-                if "hyperparams" in key and isinstance(kwargs[key], dict):
-                    [mlflow.log_param(k, v) for k, v in kwargs[key].items()]
+            print("run_name:", run_name)
+            with mlflow.start_run(run_name=run_name):
+                # log param
+                for key in kwargs:
+                    if "hyperparams" in key and isinstance(kwargs[key], dict):
+                        [mlflow.log_param(k, v) for k, v in kwargs[key].items()]
 
-            func(*args, **kwargs, use_mlflow=True)
+                func(*args, **kwargs, use_mlflow=True)
 
     return inner1

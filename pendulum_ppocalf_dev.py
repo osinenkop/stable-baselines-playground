@@ -65,7 +65,7 @@ calf_hyperparams = {
     "calf_decay_rate": 0.001,
     "initial_relax_prob": 0.4,
     "relax_prob_base_step_factor": 0.9,
-    "relax_prob_episode_factor": 0.01
+    "relax_prob_episode_factor": 0.002
 }
 
 # Global variables for graceful termination
@@ -75,25 +75,14 @@ gradients = []  # Placeholder for gradients during training
 
 
 @mlflow_monotoring
-def main(**kwarg):
+def main(args, **kwargs):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
     
-    hyperparams = kwarg.get("hyperparams")
-    if kwarg.get("use_mlflow"):
+    hyperparams = kwargs.get("hyperparams")
+    if kwargs.get("use_mlflow"):
         loggers = get_ml_logger()
-
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
-    parser.add_argument("--console", action="store_true", 
-                        help="Disable graphical output for console-only mode")
-    parser.add_argument("--normalize", action="store_true", 
-                        help="Enable observation and reward normalization")
-    parser.add_argument("--single-thread", action="store_true", default=True,
-                        help="Use DummyVecEnv for single-threaded environment")
-    args = parser.parse_args()
 
     # Check if the --console flag is used
     if args.console:
@@ -201,6 +190,8 @@ def main(**kwarg):
         if args.normalize:
             env.save("vecnormalize_stats.pkl")
 
+        env.save("calf_env.pkl")
+
         print("Training completed.")
 
         mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1)
@@ -227,7 +218,7 @@ def main(**kwarg):
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                relax_prob_base_step_factor=1,
                 relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
             )
         )
@@ -242,7 +233,7 @@ def main(**kwarg):
 
     # Run the simulation with the trained agent
     # for _ in range(3000):
-    for _ in range(100):
+    for _ in range(1000):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
@@ -266,4 +257,14 @@ def main(**kwarg):
     env_display.close()
 
 if __name__ == "__main__":
-    main(hyperparams=calf_hyperparams)    
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
+    parser.add_argument("--console", action="store_true", 
+                        help="Disable graphical output for console-only mode")
+    parser.add_argument("--normalize", action="store_true", 
+                        help="Enable observation and reward normalization")
+    parser.add_argument("--single-thread", action="store_true", default=True,
+                        help="Use DummyVecEnv for single-threaded environment")
+    args = parser.parse_args()
+    main(args, hyperparams=calf_hyperparams)    
