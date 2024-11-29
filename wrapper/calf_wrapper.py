@@ -115,9 +115,9 @@ class CALFWrapper(Wrapper):
         # print("[DEBUG]: Line 5")
         # At step 0, self.calf_state was received from reset
         obs, reward, terminated, truncated, info = self.env.step(
-            getattr(self, 
-                    "calf_action", 
-                    self.fallback_policy.compute_action(self.calf_state))
+            self.calf_action 
+            if hasattr(self, "calf_action") 
+            else self.fallback_policy.compute_action(self.calf_state)
         )
 
         if not self.relax_prob_episode_activated:
