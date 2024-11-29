@@ -229,6 +229,9 @@ def main(args, **kwargs):
     # Reset the environments
     obs = env_agent.reset()
     env_display.reset()
+    
+    env_agent.env_method("copy_policy_model", model.policy)
+    env_display.env_method("copy_policy_model", model.policy)
 
     # Run the simulation with the trained agent
     # for _ in range(3000):
