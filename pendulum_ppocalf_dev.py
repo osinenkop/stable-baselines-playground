@@ -52,9 +52,9 @@ ppo_hyperparams = {
 
 calf_hyperparams = {
     "calf_decay_rate": 0.01,
-    "initial_relax_prob": 0.4,
+    "initial_relax_prob": 0.1,
     "relax_prob_base_step_factor": 0.99,
-    "relax_prob_episode_factor": 0.001
+    "relax_prob_episode_factor": 0.0008
 }
 
 # Global variables for graceful termination
@@ -207,6 +207,7 @@ def main(args, **kwargs):
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
                 relax_prob_base_step_factor=1,
                 relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                debug=True
             )
         )
     ])
@@ -215,7 +216,7 @@ def main(args, **kwargs):
     env_display = DummyVecEnv([
         lambda: AddTruncatedFlagWrapper(
             CALFWrapper(
-                PendulumRenderFix(), 
+                PendulumRenderFix(render_mode="human"), 
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],

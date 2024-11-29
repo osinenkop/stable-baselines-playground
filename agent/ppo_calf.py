@@ -41,6 +41,8 @@ class PPO_CALF(PPO):
         # Sample new weights for the state dependent exploration
         if self.use_sde:
             self.policy.reset_noise(env.num_envs)
+            
+        env.env_method("copy_policy_model", self.policy)
 
         callback.on_rollout_start()
 
@@ -48,6 +50,7 @@ class PPO_CALF(PPO):
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
+                env.env_method("copy_policy_model", self.policy)
 
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
