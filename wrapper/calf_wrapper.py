@@ -15,7 +15,11 @@ class CALFNominalWrapper():
 class CALFEnergyPendulumWrapper(CALFNominalWrapper):
     def compute_action(self, observation):
         cos_theta, _, angular_velocity = observation
-        return self.controller.compute(cos_theta, angular_velocity)
+        control_action = self.controller.compute(cos_theta, angular_velocity)
+        
+        # Clip the action to the valid range for the Pendulum environment
+        return np.clip([control_action], -2.0, 2.0)
+        # return control_action
 
 
 class CALFWrapper(Wrapper):
@@ -53,6 +57,7 @@ class CALFWrapper(Wrapper):
         self.relax_prob_episode_activated = False
 
         self.logger = kwargs.get("logger", configure())
+        self.debug = kwargs.get("debug", False)
 
     
     def update_current_value(self, value, step):
@@ -79,11 +84,12 @@ class CALFWrapper(Wrapper):
             self.calf_value = self.current_value
         
         ## DEBUG {
-        # if is_decay:
-            # print("[DEBUG]: Line 6 Passed")
-        # else:
-            # print("[DEBUG]: Line 6 Fallback")
-        ## }
+        if self.debug:
+            if is_decay:
+                print("[DEBUG]: Line 6 Passed")
+            else:
+                print("[DEBUG]: Line 6 Fallback")
+        # }
         
         return is_decay
     
@@ -92,7 +98,7 @@ class CALFWrapper(Wrapper):
         
         self.logger.record("calf/last_relax_prob", self.relax_prob)
 
-        # print("[DEBUG]: Line 11")
+        self.debug and print("[DEBUG]: Line 11")
         if eps < self.relax_prob or \
               self.is_calf_value_decay():
             self.calf_activated_count += 1
@@ -101,18 +107,18 @@ class CALFWrapper(Wrapper):
 
     def update_calf_action(self, agent_action, calf_state):
         if self.is_agent_action_perform():
-            # print("[DEBUG]: Line 12")
+            self.debug and print("[DEBUG]: Line 12")
             self.calf_action = agent_action.copy()
             
         else:
             if self.fallback_policy is None:
                 self.calf_action = np.zeros_like(agent_action)
             else:
-                # print("[DEBUG]: Line 14")
+                self.debug and print("[DEBUG]: Line 14")
                 self.calf_action = self.fallback_policy.compute_action(calf_state)
 
     def step(self, action):
-        # print("[DEBUG]: Line 5")
+        self.debug and print("[DEBUG]: Line 5")
         # At step 0, self.calf_state was received from reset
         obs, reward, terminated, truncated, info = self.env.step(
             self.calf_action 
@@ -130,7 +136,7 @@ class CALFWrapper(Wrapper):
         
         reward = float(reward)  # Ensure reward is a scalar
         
-        # print("[DEBUG]: Line 16", self.current_step_n)
+        self.debug and print("[DEBUG]: Line 16", self.current_step_n)
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)
         

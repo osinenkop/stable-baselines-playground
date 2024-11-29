@@ -14,24 +14,13 @@ from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.preprocessing import is_image_space
 from stable_baselines3.common.evaluation import evaluate_policy
 
-from model.cnn import CustomCNN
-
 from agent.ppo_calf import PPO_CALF
 
 from mygym.my_pendulum import PendulumRenderFix
-
-from wrapper.pendulum_wrapper import NormalizeObservation
-from wrapper.pendulum_wrapper import LoggingWrapper
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
 from callback.plotting_callback import PlottingCallback
-from callback.grad_monitor_callback import GradientMonitorCallback
-from callback.cnn_output_callback import SaveCNNOutputCallback
-
 from gymnasium.wrappers import TimeLimit
-from gymnasium.wrappers.frame_stack import FrameStack
-
-from agent.debug_ppo import DebugPPO
 
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 from utilities.clean_cnn_outputs import clean_cnn_outputs
@@ -62,10 +51,10 @@ ppo_hyperparams = {
 }
 
 calf_hyperparams = {
-    "calf_decay_rate": 0.001,
+    "calf_decay_rate": 0.01,
     "initial_relax_prob": 0.4,
-    "relax_prob_base_step_factor": 0.9,
-    "relax_prob_episode_factor": 0.002
+    "relax_prob_base_step_factor": 0.99,
+    "relax_prob_episode_factor": 0.001
 }
 
 # Global variables for graceful termination
@@ -150,11 +139,11 @@ def main(args, **kwargs):
         print("Model initialized successfully.")        
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
-        # checkpoint_callback = CheckpointCallback(
-        #     save_freq=save_model_every_steps,  # Save the model periodically
-        #     save_path="./checkpoints",  # Directory to save the model
-        #     name_prefix="ppo_calf_pendulum"
-        # )
+        checkpoint_callback = CheckpointCallback(
+            save_freq=save_model_every_steps,  # Save the model periodically
+            save_path="./checkpoints",  # Directory to save the model
+            name_prefix="ppo_calf_pendulum"
+        )
 
         # Instantiate a plotting callback to show the live learning curve
         plotting_callback = PlottingCallback()
@@ -169,7 +158,7 @@ def main(args, **kwargs):
 
         # Combine both callbacks using CallbackList
         callback = CallbackList([
-            # checkpoint_callback,
+            checkpoint_callback,
             plotting_callback,
             # gradient_monitor_callback
             ])
@@ -223,7 +212,18 @@ def main(args, **kwargs):
     ])
 
     # Environment for visualization (using 'human' mode)
-    env_display = PendulumRenderFix(render_mode="human")
+    env_display = DummyVecEnv([
+        lambda: AddTruncatedFlagWrapper(
+            CALFWrapper(
+                PendulumRenderFix(), 
+                fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
+                relax_prob_base_step_factor=1,
+                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+            )
+        )
+    ])
 
     # Reset the environments
     obs = env_agent.reset()
@@ -233,8 +233,13 @@ def main(args, **kwargs):
     # for _ in range(3000):
     for _ in range(1000):
         action, _ = model.predict(obs)
+        values = model.policy.predict_values(
+            model.policy.obs_to_tensor(obs)[0]
+        )
+
         # action = env_agent.action_space.sample()  # Generate a random action
 
+        env_agent.env_method("update_current_value", values, 0)
         # Dynamically handle four or five return values
         result = env_agent.step(action)  # Take a step in the environment
         if len(result) == 4:
@@ -243,6 +248,7 @@ def main(args, **kwargs):
         else:
             obs, reward, done, truncated, info = result
 
+        env_display.env_method("update_current_value", values, 0)
         # Handle the display environment
         env_display.step(action)  # Step in the display environment to show animation
 
