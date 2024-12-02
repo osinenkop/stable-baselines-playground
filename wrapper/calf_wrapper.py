@@ -153,7 +153,7 @@ class CALFWrapper(Wrapper):
         
         reward = float(reward)  # Ensure reward is a scalar
         
-        self.debug and print("[DEBUG]: Line 16", self.current_step_n)
+        self.debug and print("[DEBUG]: Line 16")
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)
         

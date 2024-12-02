@@ -13,10 +13,18 @@ from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
+from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
+from controller.energybased import EnergyBasedController
+from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
+from stable_baselines3.common.vec_env import DummyVecEnv
+
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
+parser.add_argument("--notrain", 
+                    action="store_true", 
+                    help="Skip the training phase",
+                    default=True)
 
 # Parse the arguments
 args = parser.parse_args()
@@ -112,28 +120,46 @@ def main(**kwargs):
 
     # Now enable rendering with pygame for testing
     import pygame
-    env = gym.make("PendulumRenderFix-v0", render_mode="human")
+    env_agent = DummyVecEnv([
+        lambda: AddTruncatedFlagWrapper(
+            CALFWrapper(
+                PendulumRenderFix(render_mode="human"), 
+                fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                calf_decay_rate=0.01,
+                initial_relax_prob=0,
+                relax_prob_base_step_factor=0.95,
+                relax_prob_episode_factor=0.,
+                debug=True
+            )
+        )
+    ])
 
     # Load the model (if needed)
     model = PPO.load("checkpoints/ppo_pendulum_200000_steps")
 
-    # Reset the environment
-    obs, _ = env.reset()
+    # Reset the environments
+    obs = env_agent.reset()
+    env_agent.env_method("copy_policy_model", model.policy)
 
-    # Initialize pygame and set the display size
-    pygame.init()
-    # screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
-
-    # Run the simulation and render it
-    for _ in range(500):
+    # Run the simulation with the trained agent
+    # for _ in range(3000):
+    for _ in range(1000):
         action, _ = model.predict(obs)
-        obs, reward, done, _, _ = env.step(action)
-        env.render()  # This should now work correctly with "human" mode
-        if done:
-            obs, _ = env.reset()
 
-    # Close the environment after the simulation
-    env.close()
+        # Dynamically handle four or five return values
+        result = env_agent.step(action)  # Take a step in the environment
+        if len(result) == 4:
+            obs, reward, done, info = result
+            truncated = False
+        else:
+            obs, reward, done, truncated, info = result
+
+        if done:
+            obs = env_agent.reset()  # Reset the agent's environment
+
+    # Close the environments
+    env_agent.close()
+
 
 if __name__ == "__main__":
     main()
