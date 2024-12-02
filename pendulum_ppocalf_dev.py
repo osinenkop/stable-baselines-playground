@@ -72,6 +72,8 @@ def main(args, **kwargs):
     hyperparams = kwargs.get("hyperparams")
     if kwargs.get("use_mlflow"):
         loggers = get_ml_logger()
+    else:
+        loggers = None
 
     # Check if the --console flag is used
     if args.console:
@@ -134,7 +136,8 @@ def main(args, **kwargs):
             verbose=1,
         )
 
-        model.set_logger(loggers)
+        if not loggers:
+            model.set_logger(loggers)
         
         print("Model initialized successfully.")        
 
