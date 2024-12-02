@@ -114,7 +114,7 @@ model = PPO.load("ppo_pendulum")
 # Reset the environment
 # obs, _ = env.reset()
 obs, _ = env.reset(options={"angle": np.pi, "angular_velocity": 1.0})
-cos_theta, sin_theta, angular_velocity = obs
+cos_angle, sin_angle, angular_velocity = obs
 
 # Initialize pygame and set the display size
 pygame.init()
@@ -131,7 +131,7 @@ total_reward = 0.0
 dt = 0.05  # Time step for the simulation
 for step in range(500):
     # Compute the control action using the energy-based controller
-    control_action = controller.compute(cos_theta, angular_velocity)
+    control_action = controller.compute(cos_angle, angular_velocity)
     control_action = np.clip([control_action], -2.0, 2.0)
 
     # Generate the action from the agent model
@@ -164,7 +164,7 @@ for step in range(500):
     env.render()
 
     # Update the observation
-    cos_theta, sin_theta, angular_velocity = obs
+    cos_angle, sin_angle, angular_velocity = obs
 
     # Update the total reward
     total_reward += reward
