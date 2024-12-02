@@ -136,7 +136,7 @@ def main(args, **kwargs):
             verbose=1,
         )
 
-        if not loggers:
+        if loggers:
             model.set_logger(loggers)
         
         print("Model initialized successfully.")        
