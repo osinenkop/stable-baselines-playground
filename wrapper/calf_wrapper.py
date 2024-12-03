@@ -17,8 +17,10 @@ class CALFNominalWrapper():
 
 class CALFEnergyPendulumWrapper(CALFNominalWrapper):
     def compute_action(self, observation):
-        cos_theta, _, angular_velocity = observation
-        control_action = self.controller.compute(cos_theta, angular_velocity)
+        cos_angle, sin_angle, angular_velocity = observation
+        angle = np.arctan2(sin_angle, cos_angle)
+
+        control_action = self.controller.compute(angle, cos_angle, angular_velocity)
         
         # Clip the action to the valid range for the Pendulum environment
         return np.clip([control_action], -2.0, 2.0)
