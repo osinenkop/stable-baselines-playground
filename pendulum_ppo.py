@@ -13,13 +13,8 @@ from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
+import pandas as pd
 
-# Initialize the argument parser
-parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
-
-# Parse the arguments
-args = parser.parse_args()
 
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
@@ -50,6 +45,17 @@ def main(**kwargs):
         "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
         "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
     }
+
+
+    # Initialize the argument parser
+    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
+    parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
+    parser.add_argument("--loadstep", 
+                        type=int,
+                        help="Choose step to load checkpoint",
+                        default=total_timesteps)
+    # Parse the arguments
+    args = parser.parse_args()
 
     # More detailed explanation:
     #
@@ -112,10 +118,11 @@ def main(**kwargs):
 
     # Now enable rendering with pygame for testing
     import pygame
-    env = gym.make("PendulumRenderFix-v0", render_mode="human")
+    env = gym.make("PendulumRenderFix-v0")
+    # env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
     # Load the model (if needed)
-    model = PPO.load("checkpoints/ppo_pendulum_200000_steps")
+    model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
 
     # Reset the environment
     obs, _ = env.reset()
@@ -124,16 +131,36 @@ def main(**kwargs):
     pygame.init()
     # screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
 
+    info_dict = {
+        "state": [],
+        "action": [],
+        "reward": [],
+        "accumulated_reward": [],
+    }
+    accumulated_reward = 0
+
     # Run the simulation and render it
-    for _ in range(500):
+    for _ in range(1000):
         action, _ = model.predict(obs)
         obs, reward, done, _, _ = env.step(action)
         env.render()  # This should now work correctly with "human" mode
         if done:
             obs, _ = env.reset()
 
+        accumulated_reward += reward
+
+        info_dict["state"].append(obs)
+        info_dict["action"].append(action)
+        info_dict["reward"].append(reward)
+        info_dict["accumulated_reward"].append(accumulated_reward.copy())
+
     # Close the environment after the simulation
     env.close()
+
+    df = pd.DataFrame(info_dict)
+    df.to_csv(f"logs/pure_ppo_eval_{args.loadstep}.csv")
+
+
 
 if __name__ == "__main__":
     main()

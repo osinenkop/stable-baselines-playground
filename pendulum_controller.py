@@ -16,6 +16,9 @@ from stable_baselines3.common.utils import get_linear_fn
 from controller.pid import PIDController
 from controller.energybased import EnergyBasedController
 
+import pandas as pd
+
+
 print("Simulating controller on pendulum. PRESS SPACE TO PAUSE.")
 
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
@@ -26,7 +29,8 @@ gym.envs.registration.register(
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
-env_display = gym.make("PendulumRenderFix-v0", render_mode="human")
+# env_display = gym.make("PendulumRenderFix-v0", render_mode="human")
+env_display = gym.make("PendulumRenderFix-v0")
 
 # Reset the environment
 obs, _ = env_display.reset()
@@ -46,6 +50,14 @@ dt = 0.05  # Action time step for the simulation
 controller = EnergyBasedController()
 # ---------------------------------
 
+info_dict = {
+    "state": [],
+    "action": [],
+    "reward": [],
+    "accumulated_reward": [],
+}
+accumulated_reward = 0
+
 # Initialize pygame and set the display size
 pygame.init()
 # screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
@@ -53,7 +65,7 @@ pygame.init()
 paused = False  # Variable to track the pause state
 
 # Run the simulation and render it
-for _ in range(1500):
+for _ in range(1000):
 
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
@@ -89,8 +101,18 @@ for _ in range(1500):
     cos_angle, sin_angle, angular_velocity = obs
     angle = np.arctan2(sin_angle, cos_angle)
 
-     # Wait for the next time step
-    time.sleep(dt)  
+    accumulated_reward += reward
+
+    info_dict["state"].append(obs)
+    info_dict["action"].append(action)
+    info_dict["reward"].append(reward)
+    info_dict["accumulated_reward"].append(accumulated_reward.copy())
+
+    # # Wait for the next time step
+    # time.sleep(dt)  
 
 # Close the environment after the simulation
 env_display.close()
+
+df = pd.DataFrame(info_dict)
+df.to_csv(f"logs/energy_based_run.csv")

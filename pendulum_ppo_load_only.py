@@ -18,16 +18,11 @@ from controller.energybased import EnergyBasedController
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+import pandas as pd
+import os
 
-# Initialize the argument parser
-parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-parser.add_argument("--notrain", 
-                    action="store_true", 
-                    help="Skip the training phase",
-                    default=True)
 
-# Parse the arguments
-args = parser.parse_args()
+os.makedirs("logs", exist_ok=True)
 
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
@@ -58,6 +53,21 @@ def main(**kwargs):
         "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
         "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
     }
+
+    # Initialize the argument parser
+    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
+    parser.add_argument("--notrain", 
+                        action="store_true", 
+                        help="Skip the training phase",
+                        default=True)
+
+    parser.add_argument("--loadstep", 
+                        type=int,
+                        help="Choose step to load checkpoint",
+                        default=total_timesteps)
+
+    # Parse the arguments
+    args = parser.parse_args()
 
     # More detailed explanation:
     #
@@ -123,7 +133,8 @@ def main(**kwargs):
     env_agent = DummyVecEnv([
         lambda: AddTruncatedFlagWrapper(
             CALFWrapper(
-                PendulumRenderFix(render_mode="human"), 
+                # PendulumRenderFix(render_mode="human"), 
+                PendulumRenderFix(), 
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 calf_decay_rate=0.01,
                 initial_relax_prob=0,
@@ -135,7 +146,7 @@ def main(**kwargs):
     ])
 
     # Load the model (if needed)
-    model = PPO.load("checkpoints/ppo_pendulum_200000_steps")
+    model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
 
     # Reset the environments
     obs = env_agent.reset()
@@ -143,6 +154,15 @@ def main(**kwargs):
 
     # Run the simulation with the trained agent
     # for _ in range(3000):
+    
+    info_dict = {
+        "state": [],
+        "action": [],
+        "reward": [],
+        "accumulated_reward": [],
+    }
+    accumulated_reward = 0
+
     for _ in range(1000):
         action, _ = model.predict(obs)
 
@@ -154,11 +174,21 @@ def main(**kwargs):
         else:
             obs, reward, done, truncated, info = result
 
+        accumulated_reward += reward
+
+        info_dict["state"].append(obs[0])
+        info_dict["action"].append(action[0])
+        info_dict["reward"].append(reward)
+        info_dict["accumulated_reward"].append(accumulated_reward.copy())
+
         if done:
             obs = env_agent.reset()  # Reset the agent's environment
 
     # Close the environments
     env_agent.close()
+
+    df = pd.DataFrame(info_dict)
+    df.to_csv(f"logs/pure_ppo_with_calfw_eval_{args.loadstep}.csv")
 
 
 if __name__ == "__main__":
