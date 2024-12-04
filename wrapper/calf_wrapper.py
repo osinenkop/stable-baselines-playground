@@ -99,6 +99,7 @@ class CALFWrapper(Wrapper):
 
             # store V̂_w(s†)
             self.calf_value = current_value
+            self.logger.record("calf/calf_decay_count", self.calf_decay_count)
         
         ## DEBUG {
         if self.debug:
@@ -123,6 +124,7 @@ class CALFWrapper(Wrapper):
         if eps < self.relax_prob or \
               self.is_calf_value_decay(current_state):
             self.calf_activated_count += 1
+            self.logger.record("calf/calf_activated_count", self.calf_activated_count)
             return True
         return False
 
@@ -167,8 +169,6 @@ class CALFWrapper(Wrapper):
     def reset_internal_params(self):
         self.logger.record("calf/calf_value", self.calf_value)
         self.logger.record("calf/current_value", self.current_value)
-        self.logger.record("calf/calf_decay_count", self.calf_decay_count)
-        self.logger.record("calf/calf_activated_count", self.calf_activated_count)
 
         if self.relax_prob_episode_activated:
             self.relax_prob_step_factor = self.relax_prob_base_step_factor

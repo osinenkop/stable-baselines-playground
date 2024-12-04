@@ -20,6 +20,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import pandas as pd
 import os
+import numpy as np
 
 
 os.makedirs("logs", exist_ok=True)
@@ -32,7 +33,7 @@ gym.envs.registration.register(
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
-@mlflow_monotoring
+@mlflow_monotoring()
 def main(**kwargs):
     # Use your custom environment for training
     env = gym.make("PendulumRenderFix-v0")
@@ -65,6 +66,11 @@ def main(**kwargs):
                         type=int,
                         help="Choose step to load checkpoint",
                         default=total_timesteps)
+
+    parser.add_argument("--seed", 
+                        type=int,
+                        help="Choose random seed",
+                        default=42)
 
     # Parse the arguments
     args = parser.parse_args()
@@ -127,28 +133,48 @@ def main(**kwargs):
         print("Skipping training phase...")
 
     # ====Evaluation: animated plot to show trained agent's performance
-
-    # Now enable rendering with pygame for testing
-    import pygame
-    env_agent = DummyVecEnv([
-        lambda: AddTruncatedFlagWrapper(
-            CALFWrapper(
-                # PendulumRenderFix(render_mode="human"), 
-                PendulumRenderFix(), 
+    
+    def make_env(seed, options):
+        def _init():
+            env = PendulumRenderFix(render_mode="human")
+            # env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+            env = CALFWrapper(
+                env,
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 calf_decay_rate=0.01,
-                initial_relax_prob=0,
+                initial_relax_prob=0.5,
                 relax_prob_base_step_factor=0.95,
                 relax_prob_episode_factor=0.,
-                debug=True
+                debug=False,
+                logger=loggers
             )
-        )
-    ])
+            
+            env.reset(seed=seed, options=options)
+            
+            return env
+        return _init
+    
+    # Now enable rendering with pygame for testing
+    import pygame
+    
+    np.random.seed(args.seed)
+    high, low = env.observation_space.high, env.observation_space.low
+    options = {
+        "angle": np.random.uniform(-np.pi, np.pi),
+        "angular_velocity": np.random.uniform(low[-1], high[-1]),
+    }
+
+    env_agent = DummyVecEnv([make_env(args.seed, options)])
 
     # Load the model (if needed)
     model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    if loggers:
+        model.set_logger(loggers)
+
 
     # Reset the environments
+    env_agent.set_options(options=options)
+    env_agent.seed(seed=args.seed)
     obs = env_agent.reset()
     env_agent.env_method("copy_policy_model", model.policy)
 
@@ -160,10 +186,13 @@ def main(**kwargs):
         "action": [],
         "reward": [],
         "accumulated_reward": [],
+        "relax_probability": [],
+        "calf_activated_count": [],
     }
     accumulated_reward = 0
+    n_step = 1000
 
-    for _ in range(1000):
+    for step_i in range(n_step):
         action, _ = model.predict(obs)
 
         # Dynamically handle four or five return values
@@ -180,15 +209,18 @@ def main(**kwargs):
         info_dict["action"].append(action[0])
         info_dict["reward"].append(reward)
         info_dict["accumulated_reward"].append(accumulated_reward.copy())
-
+        info_dict["relax_probability"].append(env_agent.get_attr("relax_prob").copy()[0])
+        info_dict["calf_activated_count"].append(env_agent.get_attr("calf_activated_count").copy()[0])
+        model.logger.dump(step_i)
         if done:
+            model.logger.dump(n_step)
             obs = env_agent.reset()  # Reset the agent's environment
 
     # Close the environments
     env_agent.close()
 
     df = pd.DataFrame(info_dict)
-    df.to_csv(f"logs/pure_ppo_with_calfw_eval_{args.loadstep}.csv")
+    df.to_csv(f"logs/pure_ppo_with_calfw_eval_{args.loadstep}_seed_{args.seed}.csv")
 
 
 if __name__ == "__main__":

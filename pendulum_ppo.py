@@ -14,8 +14,9 @@ from stable_baselines3.common.utils import get_linear_fn
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
 import pandas as pd
+import os
 
-
+os.makedirs("logs", exist_ok=True)
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
 # Register the environment
@@ -24,7 +25,7 @@ gym.envs.registration.register(
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
-@mlflow_monotoring
+@mlflow_monotoring()
 def main(**kwargs):
     # Use your custom environment for training
     env = gym.make("PendulumRenderFix-v0")
@@ -54,6 +55,10 @@ def main(**kwargs):
                         type=int,
                         help="Choose step to load checkpoint",
                         default=total_timesteps)
+    parser.add_argument("--seed", 
+                        type=int,
+                        help="Choose random seed",
+                        default=42)
     # Parse the arguments
     args = parser.parse_args()
 
@@ -118,14 +123,22 @@ def main(**kwargs):
 
     # Now enable rendering with pygame for testing
     import pygame
-    env = gym.make("PendulumRenderFix-v0")
-    # env = gym.make("PendulumRenderFix-v0", render_mode="human")
+    import numpy as np
+
+    np.random.seed(args.seed)
+    # env = gym.make("PendulumRenderFix-v0")
+    env = gym.make("PendulumRenderFix-v0", render_mode="human")
+    high, low = env.observation_space.high, env.observation_space.low
+    options = {
+        "angle": np.random.uniform(-np.pi, np.pi),
+        "angular_velocity": np.random.uniform(low[-1], high[-1]),
+    }
 
     # Load the model (if needed)
     model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
 
     # Reset the environment
-    obs, _ = env.reset()
+    obs, _ = env.reset(seed=args.seed, options=options)
 
     # Initialize pygame and set the display size
     pygame.init()
@@ -158,7 +171,7 @@ def main(**kwargs):
     env.close()
 
     df = pd.DataFrame(info_dict)
-    df.to_csv(f"logs/pure_ppo_eval_{args.loadstep}.csv")
+    df.to_csv(f"logs/pure_ppo_eval_{args.loadstep}_seed_{args.seed}.csv")
 
 
 
