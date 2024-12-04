@@ -33,6 +33,49 @@ gym.envs.registration.register(
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
+def parse_args(configs):
+        # Initialize the argument parser
+    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
+    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+    parser.add_argument("--notrain", 
+                        action="store_true", 
+                        help="Skip the training phase",
+                        default=True)
+
+    parser.add_argument("--loadstep", 
+                        type=int,
+                        help="Choose step to load checkpoint",
+                        default=configs["total_timesteps"])
+
+    parser.add_argument("--seed", 
+                        type=int,
+                        help="Choose random seed",
+                        default=42)
+    
+    # CALF hyperparameter
+    # relax_prob_base_step_factor
+    # relax_prob_episode_factor
+    return parser.parse_args()
+
+    parser.add_argument("--calf_decay_rate", 
+                        type=int,
+                        help="Choose desired decay rate of state value which supports the main condition to activate CALF",
+                        default=0.005)
+    
+    parser.add_argument("--initial_relax_prob", 
+                        type=int,
+                        help="Choose initial relax probability",
+                        default=0.7)
+    
+    parser.add_argument("--relax_prob_base_step_factor",
+                        type=int,
+                        help="Choose initial relax probability",
+                        default=0.7)
+
+    # Parse the arguments
+    args = parser.parse_args()
+    return args
+
 @mlflow_monotoring()
 def main(**kwargs):
     # Use your custom environment for training
@@ -43,6 +86,10 @@ def main(**kwargs):
 
     # Total number of agent-environment interaction steps for training
     total_timesteps = 500000
+
+    args = parse_args(configs={
+        "total_timesteps": total_timesteps
+    })
 
     # Define the hyperparameters for PPO
     ppo_hyperparams = {
@@ -55,25 +102,12 @@ def main(**kwargs):
         "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
     }
 
-    # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-    parser.add_argument("--notrain", 
-                        action="store_true", 
-                        help="Skip the training phase",
-                        default=True)
-
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint",
-                        default=total_timesteps)
-
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-
-    # Parse the arguments
-    args = parser.parse_args()
+    calf_hyperparams = {
+        "calf_decay_rate": 0.005,
+        "initial_relax_prob": 0.7,
+        "relax_prob_base_step_factor": 0.99,
+        "relax_prob_episode_factor": 0.0
+    }
 
     # More detailed explanation:
     #
@@ -136,7 +170,8 @@ def main(**kwargs):
     
     def make_env(seed, options):
         def _init():
-            env = PendulumRenderFix(render_mode="human")
+            env = PendulumRenderFix(render_mode="human" if not args.console else None)
+            # env = PendulumRenderFix()
             # env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
             env = CALFWrapper(
                 env,
@@ -222,6 +257,7 @@ def main(**kwargs):
     df = pd.DataFrame(info_dict)
     df.to_csv(f"logs/pure_ppo_with_calfw_eval_{args.loadstep}_seed_{args.seed}.csv")
 
+    print(df.tail(2))
 
 if __name__ == "__main__":
     main()
