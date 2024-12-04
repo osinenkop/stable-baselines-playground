@@ -37,6 +37,7 @@ def parse_args(configs):
         # Initialize the argument parser
     parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
     parser.add_argument("--notrain", 
                         action="store_true", 
                         help="Skip the training phase",
@@ -256,7 +257,9 @@ def main(**kwargs):
 
     df = pd.DataFrame(info_dict)
     file_name = f"pure_ppo_with_calfw_eval_{args.loadstep}_seed_{args.seed}.csv"
-    df.to_csv("logs/" + file_name)
+
+    if args.log:
+        df.to_csv("logs/" + file_name)
 
     print("Case:", file_name)
     print(df.tail(2))

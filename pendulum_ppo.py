@@ -51,6 +51,7 @@ def main(**kwargs):
     # Initialize the argument parser
     parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
     parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
     parser.add_argument("--loadstep", 
                         type=int,
@@ -129,17 +130,12 @@ def main(**kwargs):
     np.random.seed(args.seed)
     # env = gym.make("PendulumRenderFix-v0")
     env = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
-    high, low = env.observation_space.high, env.observation_space.low
-    options = {
-        "angle": np.random.uniform(-np.pi, np.pi),
-        "angular_velocity": np.random.uniform(low[-1], high[-1]),
-    }
 
     # Load the model (if needed)
     model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
 
     # Reset the environment
-    obs, _ = env.reset(seed=args.seed, options=options)
+    obs, _ = env.reset(seed=args.seed)
 
     # Initialize pygame and set the display size
     pygame.init()
@@ -173,7 +169,9 @@ def main(**kwargs):
 
     df = pd.DataFrame(info_dict)
     file_name = f"pure_ppo_eval_{args.loadstep}_seed_{args.seed}.csv"
-    df.to_csv("logs/" + file_name)
+
+    if args.log:
+        df.to_csv("logs/" + file_name)
 
     print("Case:", file_name)
     print(df.tail(2))

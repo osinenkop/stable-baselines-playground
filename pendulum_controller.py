@@ -22,6 +22,7 @@ import pandas as pd
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
 parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
 parser.add_argument("--seed", 
                     type=int,
                     help="Choose random seed",
@@ -43,29 +44,14 @@ gym.envs.registration.register(
 )
 
 env_display = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
+# env_display = gym.make("Pendulum-v1", render_mode="human" if not args.console else None)
 # env_display = gym.make("PendulumRenderFix-v0")
 
-np.random.seed(args.seed)
-# env = gym.make("PendulumRenderFix-v0", render_mode="human")
-high, low = env_display.observation_space.high, env_display.observation_space.low
-options = {
-    "angle": np.random.uniform(-np.pi, np.pi),
-    "angular_velocity": np.random.uniform(low[-1], high[-1]),
-}
-
 # Reset the environment
-obs, _ = env_display.reset(seed=args.seed, options=options)
+obs, _ = env_display.reset(seed=args.seed)
 cos_angle, sin_angle, angular_velocity = obs
 angle = np.arctan2(sin_angle, cos_angle)
 
-# ---------------------------------
-# Initialize the PID controller
-kp = 5.0  # Proportional gain
-ki = 0.1   # Integral gain
-kd = 1.0   # Derivative gain
-pid = PIDController(kp, ki, kd, setpoint=0.0)  # Setpoint is the upright position (angle = 0)
-
-dt = 0.05  # Action time step for the simulation
 # ---------------------------------
 # Initialize the energy-based controller
 controller = EnergyBasedController()
@@ -129,15 +115,14 @@ for _ in range(1000):
     info_dict["reward"].append(reward)
     info_dict["accumulated_reward"].append(accumulated_reward.copy())
 
-    # # Wait for the next time step
-    # time.sleep(dt)  
-
 # Close the environment after the simulation
 env_display.close()
 
 df = pd.DataFrame(info_dict)
 file_name = f"energy_based_run_seed_{args.seed}.csv"
-df.to_csv("logs/" + file_name)
+
+if args.log:
+    df.to_csv("logs/" + file_name)
 
 print("Case:", file_name)
 print(df.tail(2))
