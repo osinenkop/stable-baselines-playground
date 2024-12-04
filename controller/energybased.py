@@ -20,7 +20,7 @@ class EnergyBasedController:
         control_action = 0.0
 
         if cos_angle < -0.8:  # Energy injection for upswing
-            control_action = 2.0 * np.sign(angular_velocity)
+            control_action = 0.5 * np.sign(angular_velocity)
             self.debug and print(f"angle: {angle:.2f}, angular_velocity: {angular_velocity:.2f}, control_action: {np.clip(control_action, -2.0, 2.0):.2f} SWINGUP")
         elif cos_angle > 0.8:  # Stabilization near upright
            # Update the integral error
