@@ -51,7 +51,7 @@ ppo_hyperparams = {
 }
 
 calf_hyperparams = {
-    "calf_decay_rate": 0.0005,
+    "calf_decay_rate": 0.005,
     "initial_relax_prob": 0.7,
     "relax_prob_base_step_factor": 0.99,
     "relax_prob_episode_factor": 0.0
@@ -63,7 +63,7 @@ episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
 
-@mlflow_monotoring
+@mlflow_monotoring(subfix="fixed_fbc")
 def main(args, **kwargs):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
