@@ -255,8 +255,10 @@ def main(**kwargs):
     env_agent.close()
 
     df = pd.DataFrame(info_dict)
-    df.to_csv(f"logs/pure_ppo_with_calfw_eval_{args.loadstep}_seed_{args.seed}.csv")
+    file_name = f"pure_ppo_with_calfw_eval_{args.loadstep}_seed_{args.seed}.csv"
+    df.to_csv("logs/" + file_name)
 
+    print("Case:", file_name)
     print(df.tail(2))
 
 if __name__ == "__main__":

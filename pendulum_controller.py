@@ -136,6 +136,8 @@ for _ in range(1000):
 env_display.close()
 
 df = pd.DataFrame(info_dict)
-df.to_csv(f"logs/energy_based_run_seed_{args.seed}.csv")
+file_name = f"energy_based_run_seed_{args.seed}.csv"
+df.to_csv("logs/" + file_name)
 
+print("Case:", file_name)
 print(df.tail(2))

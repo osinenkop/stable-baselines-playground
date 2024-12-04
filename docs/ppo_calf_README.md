@@ -106,7 +106,7 @@ Option | Description |
 | `--notrain` | Skip training and only run evaluation |
 | `--seed` | Random seed to initialize initial state of the pendulum |
 | `--loadstep` | Choose the checkpoint step want to load in the evaluation phase (i.e. 200000, 201000 500000) |
-
+| `--console` | Run in console-only mode (no graphical outputs) |
 
 #### Evaluation scripts
 To evaluate vanilla PPO with and without CALF wrapper, use this pre-defined script:
