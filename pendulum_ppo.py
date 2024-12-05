@@ -89,6 +89,8 @@ def main(**kwargs):
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
+            use_sde=True,
+            sde_sample_freq=4,
         )
         if kwargs.get("use_mlflow"):    
             model.set_logger(loggers)
