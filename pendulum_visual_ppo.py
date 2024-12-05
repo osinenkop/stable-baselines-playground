@@ -2,6 +2,7 @@ import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import signal
 
 from stable_baselines3 import PPO
@@ -35,6 +36,8 @@ from agent.debug_ppo import DebugPPO
 
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
+from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
+
 
 # Global parameters
 total_timesteps = 131072
@@ -61,23 +64,32 @@ is_training = True
 episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
-def main():
+@mlflow_monotoring()
+def main(**kwargs):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
 
+    if kwargs.get("use_mlflow"):
+        loggers = get_ml_logger()
+    
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
     parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
+    parser.add_argument("--seed", 
+                        type=int,
+                        help="Choose random seed",
+                        default=42)
     args = parser.parse_args()
 
     # Check if the --console flag is used
     if args.console:
-        import matplotlib
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
+    else:
+        matplotlib.use("TkAgg")
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
@@ -115,11 +127,12 @@ def main():
             env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
             print("Reward normalization enabled. Observations are pre-normalized to [0, 1].")
 
+        env.seed(seed=args.seed)
         obs = env.reset()
         print("Environment reset successfully.")
 
         # Set random seed for reproducibility
-        set_random_seed(42)
+        set_random_seed(args.seed)
 
         # Define the policy_kwargs to use the custom CNN
         policy_kwargs = dict(
@@ -140,6 +153,10 @@ def main():
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
         )
+        
+        if kwargs.get("use_mlflow"):    
+            model.set_logger(loggers)
+
         print("Model initialized successfully.")
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
