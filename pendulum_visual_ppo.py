@@ -40,13 +40,13 @@ from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
 
 # Global parameters
-total_timesteps = 131072
+total_timesteps = 131072 * 10
 episode_timesteps = 1024
 image_height = 64
 image_width = 64
 save_model_every_steps = 8192 / 4
 n_steps = 1024
-parallel_envs = 8
+parallel_envs = 4
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
@@ -152,6 +152,8 @@ def main(**kwargs):
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
+            use_sde=True,
+            sde_sample_freq=10,
         )
         
         if kwargs.get("use_mlflow"):    
@@ -200,6 +202,7 @@ def main(**kwargs):
         if args.normalize:
             env.save("vecnormalize_stats.pkl")
 
+        env.close()
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
@@ -227,11 +230,13 @@ def main(**kwargs):
     env_display = PendulumVisual(render_mode="human")
 
     # Reset the environments
+    env_agent.seed(seed=args.seed)
+    
     obs = env_agent.reset()
-    env_display.reset()
+    env_display.reset(seed=args.seed)
 
     # Run the simulation with the trained agent
-    for _ in range(3000):
+    for _ in range(1000):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 

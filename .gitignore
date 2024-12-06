@@ -26,6 +26,7 @@ logs/
 
 # virtuanev
 blenv/
+venv*/
 
 # Distribution / packaging
 .Python
