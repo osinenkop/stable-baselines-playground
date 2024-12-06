@@ -87,6 +87,7 @@ def main(**kwargs):
     parser.add_argument("--loadstep", 
                         type=int,
                         help="Choose step to load checkpoint")
+    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
     parser.add_argument("--seed", 
                         type=int,
                         help="Choose random seed",
