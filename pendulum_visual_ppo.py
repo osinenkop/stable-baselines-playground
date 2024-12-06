@@ -92,10 +92,6 @@ def main(**kwargs):
                         type=int,
                         help="Choose random seed",
                         default=42)
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint",
-                        default=total_timesteps)
     args = parser.parse_args()
 
     # Check if the --console flag is used
