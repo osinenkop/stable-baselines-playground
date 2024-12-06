@@ -232,7 +232,7 @@ def main(**kwargs):
     env_agent = VecTransposeImage(env_agent)
 
     # Environment for visualization (using 'human' mode)
-    env_display = PendulumVisual(render_mode="human")
+    env_display = PendulumVisual(render_mode="rgb_array" if args.console else "human")
 
     # Reset the environments
     env_agent.seed(seed=args.seed)
