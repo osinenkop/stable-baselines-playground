@@ -38,6 +38,11 @@ from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
+import pandas as pd
+import os
+
+
+os.makedirs("logs", exist_ok=True)
 
 # Global parameters
 total_timesteps = 131072 * 10
@@ -234,6 +239,14 @@ def main(**kwargs):
     
     obs = env_agent.reset()
     env_display.reset(seed=args.seed)
+    
+    info_dict = {
+        "state": [],
+        "action": [],
+        "reward": [],
+        "accumulated_reward": [],
+    }
+    accumulated_reward = 0
 
     # Run the simulation with the trained agent
     for _ in range(1000):
@@ -255,9 +268,25 @@ def main(**kwargs):
             obs = env_agent.reset()  # Reset the agent's environment
             env_display.reset()  # Reset the display environment
 
+        accumulated_reward += reward
+
+        info_dict["state"].append(obs)
+        info_dict["action"].append(action)
+        info_dict["reward"].append(reward)
+        info_dict["accumulated_reward"].append(accumulated_reward.copy())
+
     # Close the environments
     env_agent.close()
     env_display.close()
+
+    df = pd.DataFrame(info_dict)
+    file_name = f"visual_ppo_eval_{args.loadstep}_seed_{args.seed}.csv"
+
+    if args.log:
+        df.to_csv("logs/" + file_name)
+
+    print("Case:", file_name)
+    print(df.tail(2))
 
 if __name__ == "__main__":
     main()    
