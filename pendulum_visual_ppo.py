@@ -58,9 +58,9 @@ ppo_hyperparams = {
     "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
     "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
     "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "clip_range": 0.01,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
 }
 
@@ -92,6 +92,10 @@ def main(**kwargs):
                         type=int,
                         help="Choose random seed",
                         default=42)
+    parser.add_argument("--loadstep", 
+                        type=int,
+                        help="Choose step to load checkpoint",
+                        default=total_timesteps)
     args = parser.parse_args()
 
     # Check if the --console flag is used
@@ -162,7 +166,7 @@ def main(**kwargs):
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
             use_sde=True,
-            sde_sample_freq=10,
+            sde_sample_freq=16,
         )
         
         if kwargs.get("use_mlflow"):    
@@ -215,7 +219,10 @@ def main(**kwargs):
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
-        model = PPO.load("ppo_visual_pendulum")
+        if args.loadstep:
+            model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
+        else:
+            model = PPO.load("ppo_visual_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
