@@ -133,4 +133,4 @@ class CALFWrapper(Wrapper):
         self.current_obs, info = self.env.reset(**kwargs)
         self.reset_internal_params()
         
-        return self.current_obs, info
+        return self.current_obs.copy(), info
