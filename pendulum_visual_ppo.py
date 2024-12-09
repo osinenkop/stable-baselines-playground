@@ -2,7 +2,6 @@ import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 import signal
 
 from stable_baselines3 import PPO
@@ -36,31 +35,24 @@ from agent.debug_ppo import DebugPPO
 
 from utilities.clean_cnn_outputs import clean_cnn_outputs
 from utilities.intercept_termination import save_model_and_data, signal_handler
-from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
-
-import pandas as pd
-import os
-
-
-os.makedirs("logs", exist_ok=True)
 
 # Global parameters
-total_timesteps = 131072 * 10
+total_timesteps = 131072
 episode_timesteps = 1024
 image_height = 64
 image_width = 64
 save_model_every_steps = 8192 / 4
 n_steps = 1024
-parallel_envs = 4
+parallel_envs = 8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
     "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
     "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.01,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
 }
 
@@ -69,36 +61,23 @@ is_training = True
 episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
-@mlflow_monotoring()
-def main(**kwargs):
+def main():
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
 
-    if kwargs.get("use_mlflow"):
-        loggers = get_ml_logger()
-    
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
     parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
     args = parser.parse_args()
 
     # Check if the --console flag is used
     if args.console:
+        import matplotlib
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
-    else:
-        matplotlib.use("TkAgg")
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
@@ -136,12 +115,11 @@ def main(**kwargs):
             env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
             print("Reward normalization enabled. Observations are pre-normalized to [0, 1].")
 
-        env.seed(seed=args.seed)
         obs = env.reset()
         print("Environment reset successfully.")
 
         # Set random seed for reproducibility
-        set_random_seed(args.seed)
+        set_random_seed(42)
 
         # Define the policy_kwargs to use the custom CNN
         policy_kwargs = dict(
@@ -161,13 +139,7 @@ def main(**kwargs):
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
             verbose=1,
-            use_sde=True,
-            sde_sample_freq=16,
         )
-        
-        if kwargs.get("use_mlflow"):    
-            model.set_logger(loggers)
-
         print("Model initialized successfully.")
 
         # Set up a checkpoint callback to save the model every 'save_freq' steps
@@ -211,14 +183,10 @@ def main(**kwargs):
         if args.normalize:
             env.save("vecnormalize_stats.pkl")
 
-        env.close()
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
-        if args.loadstep:
-            model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
-        else:
-            model = PPO.load("ppo_visual_pendulum")
+        model = PPO.load("ppo_visual_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
@@ -239,24 +207,14 @@ def main(**kwargs):
     env_agent = VecTransposeImage(env_agent)
 
     # Environment for visualization (using 'human' mode)
-    env_display = PendulumVisual(render_mode="rgb_array" if args.console else "human")
+    env_display = PendulumVisual(render_mode="human")
 
     # Reset the environments
-    env_agent.seed(seed=args.seed)
-    
     obs = env_agent.reset()
-    env_display.reset(seed=args.seed)
-    
-    info_dict = {
-        "state": [],
-        "action": [],
-        "reward": [],
-        "accumulated_reward": [],
-    }
-    accumulated_reward = 0
+    env_display.reset()
 
     # Run the simulation with the trained agent
-    for _ in range(1000):
+    for _ in range(3000):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
@@ -275,25 +233,9 @@ def main(**kwargs):
             obs = env_agent.reset()  # Reset the agent's environment
             env_display.reset()  # Reset the display environment
 
-        accumulated_reward += reward
-
-        info_dict["state"].append(obs)
-        info_dict["action"].append(action)
-        info_dict["reward"].append(reward)
-        info_dict["accumulated_reward"].append(accumulated_reward.copy())
-
     # Close the environments
     env_agent.close()
     env_display.close()
-
-    df = pd.DataFrame(info_dict)
-    file_name = f"visual_ppo_eval_{args.loadstep}_seed_{args.seed}.csv"
-
-    if args.log:
-        df.to_csv("logs/" + file_name)
-
-    print("Case:", file_name)
-    print(df.tail(2))
 
 if __name__ == "__main__":
     main()    
