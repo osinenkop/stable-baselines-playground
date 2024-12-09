@@ -87,7 +87,7 @@ class CALFWrapper(Wrapper):
             self.calf_decay_count += 1
             self.logger.record("calf/calf_decay_count", self.calf_decay_count)
         
-        if if_calf_constraint_satisfied or np.random.random() < self.relax_prob :
+        if if_calf_constraint_satisfied or np.random.random() < self.relax_prob:
             action = agent_action
             self.calf_activated_count += 1
             self.logger.record("calf/calf_activated_count", self.calf_activated_count)
@@ -97,6 +97,7 @@ class CALFWrapper(Wrapper):
             action = self.fallback_policy.compute_action(self.current_obs)
             self.debug and print("[DEBUG]: Line 14")                
         
+        # Update relax probability
         self.debug and print("[DEBUG]: Line 16")
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)

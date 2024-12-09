@@ -189,9 +189,9 @@ def main(**kwargs):
         "state": [],
         "action": [],
         "reward": [],
-        "accumulated_reward": [],
         "relax_probability": [],
         "calf_activated_count": [],
+        "accumulated_reward": [],
     }
     accumulated_reward = 0
     n_step = 1000
