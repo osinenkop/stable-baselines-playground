@@ -44,8 +44,6 @@ gym.envs.registration.register(
 )
 
 env_display = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
-# env_display = gym.make("Pendulum-v1", render_mode="human" if not args.console else None)
-# env_display = gym.make("PendulumRenderFix-v0")
 
 # Reset the environment
 obs, _ = env_display.reset(seed=args.seed)

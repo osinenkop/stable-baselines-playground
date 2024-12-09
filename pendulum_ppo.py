@@ -45,6 +45,8 @@ def main(**kwargs):
         "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
         "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
         "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
+        "use_sde": True, # Whether to use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
+        "sde_sample_freq": 4, # Sample a new noise matrix every n steps when using gSDE
     }
 
 
@@ -87,9 +89,9 @@ def main(**kwargs):
             gamma=ppo_hyperparams["gamma"],
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
+            use_sde=ppo_hyperparams["use_sde"],
+            sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
             verbose=1,
-            use_sde=True,
-            sde_sample_freq=4,
         )
         if kwargs.get("use_mlflow"):    
             model.set_logger(loggers)

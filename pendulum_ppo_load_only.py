@@ -52,10 +52,7 @@ def parse_args(configs):
                         type=int,
                         help="Choose random seed",
                         default=42)
-    
-    # CALF hyperparameter
-    # relax_prob_base_step_factor
-    # relax_prob_episode_factor
+
     return parser.parse_args()
 
 
@@ -74,79 +71,12 @@ def main(**kwargs):
         "total_timesteps": total_timesteps
     })
 
-    # Define the hyperparameters for PPO
-    ppo_hyperparams = {
-        "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-        "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-        "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-        "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
-        "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-        "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
-    }
-
     calf_hyperparams = {
         "calf_decay_rate": 0.01,
         "initial_relax_prob": 0.5,
         "relax_prob_base_step_factor": .95,
         "relax_prob_episode_factor": 0.
     }
-
-    # More detailed explanation:
-    #
-    # learning_rate: Controls how quickly or slowly the model updates its parameters. A very low value, like 1e-6, results in slow learning, which can sometimes prevent instability.
-    # n_steps: Determines how many steps of experience are collected before updating the policy. A larger n_steps provides more data for each update but requires more memory and computation.
-    # batch_size: The number of samples used to compute each gradient update. It affects the variance of the gradient estimate and the stability of learning.
-    # gamma: The discount factor, which defines how future rewards are weighted relative to immediate rewards. A high value (close to 1) makes the agent focus on long-term rewards.
-    # gae_lambda: A parameter used in the Generalized Advantage Estimation (GAE) method, which helps reduce variance in the advantage estimates. It controls the trade-off between bias and variance.
-    # clip_range: The range within which the policy is clipped to prevent overly large updates, ensuring more stable training.
-
-    # Check if the --notrain flag is provided
-    if not args.notrain:
-        env.seed(seed=args.seed)
-
-        # Create the PPO model with the specified hyperparameters
-        model = PPO(
-            "MlpPolicy",
-            env,
-            learning_rate=ppo_hyperparams["learning_rate"],
-            n_steps=ppo_hyperparams["n_steps"],
-            batch_size=ppo_hyperparams["batch_size"],
-            gamma=ppo_hyperparams["gamma"],
-            gae_lambda=ppo_hyperparams["gae_lambda"],
-            clip_range=ppo_hyperparams["clip_range"],
-            verbose=1,
-        )
-        if kwargs.get("use_mlflow"):    
-            model.set_logger(loggers)
-
-        # Create the plotting callback
-        plotting_callback = PlottingCallback()
-
-        checkpoint_callback = CheckpointCallback(
-            save_freq=1000,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
-            name_prefix="ppo_pendulum"
-            )
-
-        # Combine both callbacks using CallbackList
-        callback = CallbackList([
-            checkpoint_callback,
-            plotting_callback,
-            # gradient_monitor_callback
-            ])
-
-        # Train the model
-        print("Training the model...")
-        model.learn(total_timesteps=total_timesteps, callback=callback)
-        # Save the model after training
-        model.save("ppo_pendulum")
-        # Close the plot after training
-        plt.ioff()  # Turn off interactive mode
-        # plt.show()  # Show the final plot
-        # plt.close("all")   
-    else:
-        print("Skipping training phase...")
 
     # ====Evaluation: animated plot to show trained agent's performance
     

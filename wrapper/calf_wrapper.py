@@ -78,11 +78,9 @@ class CALFWrapper(Wrapper):
     def step(self, agent_action):
         current_value = self.get_state_value(self.current_obs)
         
-        # V̂_w (st) − V̂_w(s†) ≥ ν̄
         if_calf_constraint_satisfied = current_value - self.last_good_value >= self.calf_decay_rate
         
         if if_calf_constraint_satisfied:
-            # store V̂_w(s†)
             self.last_good_value = current_value
             self.calf_decay_count += 1
             self.logger.record("calf/calf_decay_count", self.calf_decay_count)
@@ -126,10 +124,8 @@ class CALFWrapper(Wrapper):
         self.calf_decay_count = 0
 
         self.logger.record("calf/init_relax_prob", self.relax_prob)
-        # print(f"Resetting environment last self.relax_prob: {self.relax_prob}")
 
     def reset(self, **kwargs):
-        # print(f"Resetting environment with args: {kwargs}")
         self.current_obs, info = self.env.reset(**kwargs)
         self.reset_internal_params()
         
