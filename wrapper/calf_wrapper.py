@@ -37,7 +37,7 @@ class CALFWrapper(Wrapper):
                  relax_prob_episode_factor: float = 0.1,
                  **kwargs):
         super().__init__(env)
-        self.calf_value = None
+        self.last_good_value = None
         self.current_value = None
         self.fallback_policy = fallback_policy
         self.calf_activated_count = 0
@@ -68,12 +68,6 @@ class CALFWrapper(Wrapper):
 
     def copy_policy_model(self, policy_model):
         self.policy_model = copy(policy_model)
-    
-    # Ignore this function
-    def update_current_value(self, value, step):
-        # Receive state-value from agent
-        self.current_value = value
-        self.current_step_n = step
 
     def get_state_value(self, state):
         with th.no_grad():
@@ -81,95 +75,44 @@ class CALFWrapper(Wrapper):
                 self.policy_model.obs_to_tensor(state)[0]
             )
 
-    def is_calf_value_decay(self, current_state):
-        is_decay = False
-        current_value = self.get_state_value(current_state)
-
-        # In case before PPO starts learning
-        if current_value is None:
-            return is_decay
-
-        if self.calf_value is None:
-            self.calf_value = current_value
-
+    def step(self, agent_action):
+        current_value = self.get_state_value(self.current_obs)
+        
         # V̂_w (st) − V̂_w(s†) ≥ ν̄
-        elif current_value - self.calf_value >= self.calf_decay_rate:
-            is_decay = True
-            self.calf_decay_count += 1
-
+        if_calf_constraint_satisfied = current_value - self.last_good_value >= self.calf_decay_rate
+        
+        if if_calf_constraint_satisfied:
             # store V̂_w(s†)
-            self.calf_value = current_value
+            self.last_good_value = current_value
+            self.calf_decay_count += 1
             self.logger.record("calf/calf_decay_count", self.calf_decay_count)
         
-        ## DEBUG {
-        if self.debug:
-            if is_decay:
-                print("[DEBUG]: Line 6 Passed")
-            else:
-                print("[DEBUG]: Line 6 Fallback")
-        # }
-        
-        return is_decay
-    
-    def get_calf_action(self):
-        return self.calf_action if hasattr(self, "calf_action") \
-                                else self.fallback_policy.compute_action(self.calf_state)
-    
-    def is_agent_action_perform(self, current_state):
-        eps = np.random.random()
-        
-        self.logger.record("calf/last_relax_prob", self.relax_prob)
-
-        self.debug and print("[DEBUG]: Line 11")
-        if eps < self.relax_prob or \
-              self.is_calf_value_decay(current_state):
+        if if_calf_constraint_satisfied or np.random.random() < self.relax_prob :
+            action = agent_action
             self.calf_activated_count += 1
             self.logger.record("calf/calf_activated_count", self.calf_activated_count)
-            return True
-        return False
-
-    def update_calf_action(self, agent_action, current_state):
-        if self.is_agent_action_perform(current_state):
             self.debug and print("[DEBUG]: Line 12")
-            self.calf_action = agent_action.copy()
             
         else:
-            if self.fallback_policy is None:
-                self.calf_action = np.zeros_like(agent_action)
-            else:
-                self.debug and print("[DEBUG]: Line 14")
-                self.calf_action = self.fallback_policy.compute_action(current_state)
-
-    def step(self, action):
-        self.debug and print("[DEBUG]: Line 5")
-        # At step 0, self.calf_state was received from reset
-        obs, reward, terminated, truncated, info = self.env.step(
-            self.get_calf_action()
-        )
-
-        if not self.relax_prob_episode_activated:
-            self.relax_prob_episode_activated = True
-
-        if not hasattr(self, "current_value"):
-            raise Exception("No current_value found")
-        
-        self.update_calf_action(action, obs)
-        
-        reward = float(reward)  # Ensure reward is a scalar
+            action = self.fallback_policy.compute_action(self.current_obs)
+            self.debug and print("[DEBUG]: Line 14")                
         
         self.debug and print("[DEBUG]: Line 16")
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)
+
+        self.current_obs, reward, terminated, truncated, info = self.env.step(
+            action
+        )
+        self.debug and print("[DEBUG]: Line 5")
         
-        # Log observation, reward, and done flags
-        # print(f"Obs: {obs}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
-        
-        return obs, reward, terminated, truncated, info
+        self.logger.record("calf/last_relax_prob", self.relax_prob)
+        if not self.relax_prob_episode_activated:
+            self.relax_prob_episode_activated = True
+
+        return self.current_obs.copy(), float(reward), terminated, truncated, info
     
     def reset_internal_params(self):
-        self.logger.record("calf/calf_value", self.calf_value)
-        self.logger.record("calf/current_value", self.current_value)
-
         if self.relax_prob_episode_activated:
             self.relax_prob_step_factor = self.relax_prob_base_step_factor
             self.initial_relax_prob = np.clip(
@@ -177,7 +120,7 @@ class CALFWrapper(Wrapper):
                 0, 1)
             self.relax_prob = self.initial_relax_prob
 
-        self.calf_value = None
+        self.last_good_value = self.get_state_value(self.current_obs)
         self.calf_activated_count = 0
         self.calf_decay_count = 0
 
@@ -186,8 +129,7 @@ class CALFWrapper(Wrapper):
 
     def reset(self, **kwargs):
         # print(f"Resetting environment with args: {kwargs}")
-        
+        self.current_obs, info = self.env.reset(**kwargs)
         self.reset_internal_params()
-        self.calf_state, info = self.env.reset(**kwargs)
-        return self.calf_state, info
-    
+        
+        return self.current_obs, info

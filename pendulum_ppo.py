@@ -55,8 +55,7 @@ def main(**kwargs):
     parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
     parser.add_argument("--loadstep", 
                         type=int,
-                        help="Choose step to load checkpoint",
-                        default=total_timesteps)
+                        help="Choose step to load checkpoint")
     parser.add_argument("--seed", 
                         type=int,
                         help="Choose random seed",

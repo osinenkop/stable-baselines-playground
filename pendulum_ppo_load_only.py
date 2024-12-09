@@ -58,24 +58,6 @@ def parse_args(configs):
     # relax_prob_episode_factor
     return parser.parse_args()
 
-    parser.add_argument("--calf_decay_rate", 
-                        type=int,
-                        help="Choose desired decay rate of state value which supports the main condition to activate CALF",
-                        default=0.005)
-    
-    parser.add_argument("--initial_relax_prob", 
-                        type=int,
-                        help="Choose initial relax probability",
-                        default=0.7)
-    
-    parser.add_argument("--relax_prob_base_step_factor",
-                        type=int,
-                        help="Choose initial relax probability",
-                        default=0.7)
-
-    # Parse the arguments
-    args = parser.parse_args()
-    return args
 
 @mlflow_monotoring()
 def main(**kwargs):
@@ -104,10 +86,10 @@ def main(**kwargs):
     }
 
     calf_hyperparams = {
-        "calf_decay_rate": 0.005,
-        "initial_relax_prob": 0.7,
-        "relax_prob_base_step_factor": 0.99,
-        "relax_prob_episode_factor": 0.0
+        "calf_decay_rate": 0.01,
+        "initial_relax_prob": 0.5,
+        "relax_prob_base_step_factor": .95,
+        "relax_prob_episode_factor": 0.
     }
 
     # More detailed explanation:
@@ -119,10 +101,9 @@ def main(**kwargs):
     # gae_lambda: A parameter used in the Generalized Advantage Estimation (GAE) method, which helps reduce variance in the advantage estimates. It controls the trade-off between bias and variance.
     # clip_range: The range within which the policy is clipped to prevent overly large updates, ensuring more stable training.
 
-    
-
     # Check if the --notrain flag is provided
     if not args.notrain:
+        env.seed(seed=args.seed)
 
         # Create the PPO model with the specified hyperparameters
         model = PPO(
@@ -169,7 +150,7 @@ def main(**kwargs):
 
     # ====Evaluation: animated plot to show trained agent's performance
     
-    def make_env(seed, options):
+    def make_env():
         def _init():
             env = PendulumRenderFix(render_mode="human" if not args.console else None)
             # env = PendulumRenderFix()
@@ -177,30 +158,21 @@ def main(**kwargs):
             env = CALFWrapper(
                 env,
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
-                calf_decay_rate=0.01,
-                initial_relax_prob=0.5,
-                relax_prob_base_step_factor=0.95,
-                relax_prob_episode_factor=0.,
+                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
+                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
                 debug=False,
                 logger=loggers
             )
-            
-            env.reset(seed=seed, options=options)
-            
+                        
             return env
         return _init
     
     # Now enable rendering with pygame for testing
     import pygame
     
-    np.random.seed(args.seed)
-    high, low = env.observation_space.high, env.observation_space.low
-    options = {
-        "angle": np.random.uniform(-np.pi, np.pi),
-        "angular_velocity": np.random.uniform(low[-1], high[-1]),
-    }
-
-    env_agent = DummyVecEnv([make_env(args.seed, options)])
+    env_agent = DummyVecEnv([make_env()])
 
     # Load the model (if needed)
     model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
@@ -209,13 +181,9 @@ def main(**kwargs):
 
 
     # Reset the environments
-    env_agent.set_options(options=options)
+    env_agent.env_method("copy_policy_model", model.policy)
     env_agent.seed(seed=args.seed)
     obs = env_agent.reset()
-    env_agent.env_method("copy_policy_model", model.policy)
-
-    # Run the simulation with the trained agent
-    # for _ in range(3000):
     
     info_dict = {
         "state": [],
@@ -228,6 +196,7 @@ def main(**kwargs):
     accumulated_reward = 0
     n_step = 1000
 
+    # Run the simulation with the trained agent
     for step_i in range(n_step):
         action, _ = model.predict(obs)
 
@@ -244,9 +213,9 @@ def main(**kwargs):
         info_dict["state"].append(obs[0])
         info_dict["action"].append(action[0])
         info_dict["reward"].append(reward)
-        info_dict["accumulated_reward"].append(accumulated_reward.copy())
         info_dict["relax_probability"].append(env_agent.get_attr("relax_prob").copy()[0])
         info_dict["calf_activated_count"].append(env_agent.get_attr("calf_activated_count").copy()[0])
+        info_dict["accumulated_reward"].append(accumulated_reward.copy())
         model.logger.dump(step_i)
         if done:
             model.logger.dump(n_step)
