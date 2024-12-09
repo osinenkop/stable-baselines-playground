@@ -125,6 +125,57 @@ The custom CNN architecture used in this repository for visual PPO is as follows
 Processes stacked input frames (e.g., 4 frames) for policy learning.
 [Here](./gfx/CNN_architecture_PPO4Pendulum.png) is a graphical representation of the CNN architecture.
 
+### Train PPO and Evaluate PPO (Pendulum Environment) with CALF Wrapper
+#### Training
+PPO is trained using as mentioned above with the standard pendulum environment:
+```bash
+python pendulum_ppo.py
+```
+
+The following configuration was used:
+
+```
+ppo_hyperparams = {
+        "learning_rate": 5e-4,
+        "n_steps": 4000,
+        "batch_size": 200,
+        "gamma": 0.98,
+        "gae_lambda": 0.9,
+        "clip_range": 0.05,
+        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),
+        "use_sde": True,
+        "sde_sample_freq": 4,
+    }
+```
+
+#### Evaluation scripts
+To evaluate vanilla PPO with and without CALF wrapper (using Pendulum environment), there are 5 evaluation scenario should be run:
+- Welled-trained vanilla PPO is evaluated with standard Pedulum environment
+- Under-trained vanilla PPO is evaluated with standard Pedulum environment
+- Welled-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
+- Under-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
+- Traditional controller algorithm (as a reference, and used as CALF fallback controller as well) is evaluated
+  
+Use this pre-defined script:
+```shell
+source evaluation.sh
+```
+Or to run 30 seeds for each case with corresponding initial states:
+```shell
+source evaluation_loop.sh
+```
+
+#### Options
+
+Option | Description |
+| ----- |  ----- |
+| `--notrain` | Skip training and only run evaluation |
+| `--seed` | Random seed to initialize initial state of the pendulum |
+| `--loadstep` | Choose the checkpoint step want to load in the evaluation phase (i.e. 200000, 201000 500000) |
+| `--console` | Run in console-only mode (no graphical outputs) |
+| `--log` | Enable logging and printing of simulation data |
+
+
 ## Author
 
 Pavel Osinenko, 2024
