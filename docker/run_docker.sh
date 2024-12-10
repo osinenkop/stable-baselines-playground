@@ -14,4 +14,6 @@ docker run  --gpus all \
             -v $ROOT_DIR:/stable-baseline-playground \
             --net=host \
             --privileged \
+            --cpuset-cpus 0-3 \
             --name stable-baseline-ppo-visual stable-baseline-ppo-visual-img
+            
