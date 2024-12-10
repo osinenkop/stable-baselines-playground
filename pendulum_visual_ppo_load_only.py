@@ -6,7 +6,7 @@ import matplotlib
 import signal
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.utils import set_random_seed, obs_as_tensor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
@@ -25,6 +25,8 @@ from wrapper.pendulum_wrapper import ResizeObservation
 from wrapper.pendulum_wrapper import LoggingWrapper
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
+from wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper
+
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
 from callback.cnn_output_callback import SaveCNNOutputCallback
@@ -39,9 +41,26 @@ from utilities.intercept_termination import save_model_and_data, signal_handler
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 from utilities.rerun_wrapper import rerun_if_error
 
+import time
 import pandas as pd
 import os
 
+
+class CALF_PPOPendulumWrapper(CALFNominalWrapper):
+    def __init__(self, checkpoint_path, action_low, action_high, device="cuda"):
+        self.model = PPO.load(checkpoint_path)
+        self.device = device
+        self.action_space_low = action_low
+        self.action_space_high = action_high
+    
+    def compute_action(self, observation):
+        with torch.no_grad():
+            # Convert to pytorch tensor or to TensorDict
+            obs_tensor = obs_as_tensor(observation, self.device)
+            actions, _, _ = self.model.policy(obs_tensor)
+            actions = actions.cpu().numpy()
+
+        return np.clip(actions, self.action_space_low, self.action_space_high)
 
 os.makedirs("logs", exist_ok=True)
 
@@ -89,18 +108,29 @@ def main(**kwargs):
     parser.add_argument("--loadstep", 
                         type=int,
                         help="Choose step to load checkpoint")
+    parser.add_argument("--fallback-checkpoint", 
+                        type=str,
+                        help="Choose step to load checkpoint")
+    parser.add_argument("--eval-checkpoint", 
+                        type=str,
+                        help="Choose step to load checkpoint")
     parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
     parser.add_argument("--seed", 
                         type=int,
                         help="Choose random seed",
                         default=42)
-    parser.add_argument("--eval-checkpoint", 
-                        type=str,
-                        help="Choose step to load checkpoint")
     parser.add_argument("--eval-name", 
                         type=str,
                         help="Choose experimental name for logging")
     args = parser.parse_args()
+
+
+    calf_hyperparams = {
+        "calf_decay_rate": 0.01,
+        "initial_relax_prob": 0.5,
+        "relax_prob_base_step_factor": .95,
+        "relax_prob_episode_factor": 0.
+    }
 
     # Check if the --console flag is used
     if args.console:
@@ -108,138 +138,29 @@ def main(**kwargs):
     else:
         matplotlib.use("TkAgg")
 
-    # Train the model if --notrain flag is not provided
-    if not args.notrain:
-
-        # Define a global variable for the training loop
-        is_training = True
-
-        # Function to create the base environment
-        def make_env(seed):
-            def _init():
-                env = PendulumVisualNoArrowParallelizable()
-                # env = LoggingWrapper(env)  # For debugging: log each step. Comment out by default
-                env = TimeLimit(env, max_episode_steps=episode_timesteps)
-                env = ResizeObservation(env, (image_height, image_width))
-                env.reset(seed=seed)
-                return env
-            return _init
-
-        # Environment setup based on --single-thread flag
-        if args.single_thread:
-            print("Using single-threaded environment (DummyVecEnv).")
-            env = DummyVecEnv([make_env(0)])
-        else:
-            print("Using multi-threaded environment (SubprocVecEnv).")
-            env = SubprocVecEnv([make_env(seed) for seed in range(parallel_envs)])
-
-        # Apply VecFrameStack to stack frames along the channel dimension
-        env = VecFrameStack(env, n_stack=4)
-
-        # Apply VecTransposeImage
-        env = VecTransposeImage(env)
-
-        # Apply reward and observation normalization if --normalize flag is provided
-        if args.normalize:
-            env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_obs=10.0)
-            print("Reward normalization enabled. Observations are pre-normalized to [0, 1].")
-
-        env.seed(seed=args.seed)
-        obs = env.reset()
-        print("Environment reset successfully.")
-
-        # Set random seed for reproducibility
-        set_random_seed(args.seed)
-
-        # Define the policy_kwargs to use the custom CNN
-        policy_kwargs = dict(
-            features_extractor_class=CustomCNN,
-            features_extractor_kwargs=dict(features_dim=256, num_frames=4)  # Adjust num_frames as needed
-        )
-
-        # Create the PPO agent using the custom feature extractor
-        model = DebugPPO(
-            "CnnPolicy",
-            env,
-            policy_kwargs=policy_kwargs,
-            learning_rate=ppo_hyperparams["learning_rate"],
-            n_steps=ppo_hyperparams["n_steps"],
-            batch_size=ppo_hyperparams["batch_size"],
-            gamma=ppo_hyperparams["gamma"],
-            gae_lambda=ppo_hyperparams["gae_lambda"],
-            clip_range=ppo_hyperparams["clip_range"],
-            verbose=1,
-            use_sde=True,
-            sde_sample_freq=16,
-        )
-        
-        if kwargs.get("use_mlflow"):    
-            model.set_logger(loggers)
-
-        print("Model initialized successfully.")
-
-        # Set up a checkpoint callback to save the model every 'save_freq' steps
-        checkpoint_callback = CheckpointCallback(
-            save_freq=save_model_every_steps,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
-            name_prefix="ppo_visual_pendulum"
-        )
-
-        # Instantiate a plotting callback to show the live learning curve
-        plotting_callback = PlottingCallback()
-
-        # Instantiate the GradientMonitorCallback
-        gradient_monitor_callback = GradientMonitorCallback()    
-
-        # If --console flag is set, disable the plot and just save the data
-        if args.console:
-            plotting_callback.figure = None  # Disable plotting
-            print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
-
-        # Combine both callbacks using CallbackList
-        callback = CallbackList([
-            checkpoint_callback,
-            plotting_callback,
-            gradient_monitor_callback
-            ])
-
-        print("Starting training ...")
-
-        try:
-            model.learn(total_timesteps=total_timesteps, callback=callback)
-        except KeyboardInterrupt:
-            print("Training interrupted. Saving model and data...")
-            save_model_and_data(model, episode_rewards, gradients)
-        finally:
-            print("Training completed or interrupted.")
-
-        model.save("ppo_visual_pendulum")
-
-        # Save the normalization statistics if --normalize is used
-        if args.normalize:
-            env.save("vecnormalize_stats.pkl")
-
-        env.close()
-        print("Training completed.")
+    print("Skipping training. Loading the saved model...")
+    if args.eval_checkpoint:
+        model = PPO.load(args.eval_checkpoint)
+    elif args.loadstep:
+        model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
     else:
-        print("Skipping training. Loading the saved model...")
-
-        if args.eval_checkpoint:
-            model = PPO.load(args.eval_checkpoint)
-        elif args.loadstep:
-            model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
-        else:
-            model = PPO.load("ppo_visual_pendulum")
-
-        # Load the normalization statistics if --normalize is used
-        if args.normalize:
-            env = VecNormalize.load("vecnormalize_stats.pkl", env)
-            env.training = False  # Set to evaluation mode
-            env.norm_reward = False  # Disable reward normalization for evaluation
+        model = PPO.load("ppo_visual_pendulum")
 
     # Visual evaluation after training or loading
     print("Starting evaluation...")
+    
+    def make_env():
+        def _init():
+            env = PendulumVisualNoArrowParallelizable()
+            env = TimeLimit(env, max_episode_steps=episode_timesteps)
+            env = ResizeObservation(env, (image_height, image_width))
+            
+            return env
+        return _init
 
+    # Now enable rendering with pygame for testing
+    import pygame
+    
     # Environment for the agent (using 'rgb_array' mode)
     env_agent = DummyVecEnv([
         lambda: AddTruncatedFlagWrapper(
@@ -247,17 +168,38 @@ def main(**kwargs):
                               (image_height, image_width))
         )
     ])
+
     env_agent = VecFrameStack(env_agent, n_stack=4)
     env_agent = VecTransposeImage(env_agent)
+    env_agent = CALFWrapper(
+                env_agent,
+                fallback_policy=CALF_PPOPendulumWrapper(
+                                    args.fallback_checkpoint,
+                                    action_high=env_agent.action_space.high,
+                                    action_low=env_agent.action_space.low
+                                    ),
+                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
+                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                debug=False,
+                logger=loggers
+            )
 
-    # Environment for visualization (using 'human' mode)
-    env_display = PendulumVisual(render_mode="rgb_array" if args.console else "human")
+    # Load the normalization statistics if --normalsize is used
+    if args.normalize:
+        env_agent = VecNormalize.load("vecnormalize_stats.pkl", env_agent)
+        env_agent.training = False  # Set to evaluation mode
+        env_agent.norm_reward = False  # Disable reward normalization for evaluation
 
+    # env_agent.env_method("copy_policy_model", model.policy)
+    env_agent.copy_policy_model(model.policy)
+    
     # Reset the environments
     env_agent.seed(seed=args.seed)
     
-    obs = env_agent.reset()
-    env_display.reset(seed=args.seed)
+    obs, _ = env_agent.reset()
+    # obs = env_agent.reset()
     
     info_dict = {
         "state": [],
@@ -265,7 +207,8 @@ def main(**kwargs):
         "reward": [],
         "accumulated_reward": [],
     }
-    accumulated_reward = 0
+    accumulated_reward = np.float32(0)
+    fig, ax = plt.subplots()
 
     # Run the simulation with the trained agent
     for _ in range(1000):
@@ -281,11 +224,9 @@ def main(**kwargs):
             obs, reward, done, truncated, info = result
 
         # Handle the display environment
-        env_display.step(action)  # Step in the display environment to show animation
-
+        # env_display.step(action)  # Step in the display environment to show animation
         if done:
             obs = env_agent.reset()  # Reset the agent's environment
-            env_display.reset()  # Reset the display environment
 
         accumulated_reward += reward
 
@@ -294,11 +235,17 @@ def main(**kwargs):
         info_dict["reward"].append(reward)
         info_dict["accumulated_reward"].append(accumulated_reward.copy())
 
+        # ax.imshow(obs[0][-3:].transpose((1, 2, 0)).copy())
+        # ax.axis("off")
+        # plt.pause(1/30)
+        # time.sleep(1/30)
     # Close the environments
     env_agent.close()
-    env_display.close()
+
+    print("Get outside of the evaluation")
 
     df = pd.DataFrame(info_dict)
+
     if args.eval_name:
         file_name = f"visual_ppo_eval_{args.eval_name}_seed_{args.seed}.csv"
     else:

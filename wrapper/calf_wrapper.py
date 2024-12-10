@@ -12,7 +12,7 @@ class CALFNominalWrapper():
 
     def compute_action(self, observation):
         action = ...
-        return action 
+        return action
 
 
 class CALFEnergyPendulumWrapper(CALFNominalWrapper):
@@ -100,9 +100,21 @@ class CALFWrapper(Wrapper):
         self.relax_prob = np.clip(self.relax_prob * self.relax_prob_step_factor,
                                   0, 1)
 
-        self.current_obs, reward, terminated, truncated, info = self.env.step(
+        returns = self.env.step(
             action
         )
+        if len(returns) == 5:
+            self.current_obs, reward, terminated, truncated, info = returns
+        else:
+            self.current_obs, reward, dones, infos = returns
+            info = infos[0]
+            terminated = False
+            truncated = False
+            for idx, done in enumerate(dones):
+                if done:
+                    terminated = "terminal_observation" in infos[idx]
+                    truncated = infos[idx].get("TimeLimit.truncated", False)
+
         self.debug and print("[DEBUG]: Line 5")
         
         self.logger.record("calf/last_relax_prob", self.relax_prob)
@@ -126,7 +138,14 @@ class CALFWrapper(Wrapper):
         self.logger.record("calf/init_relax_prob", self.relax_prob)
 
     def reset(self, **kwargs):
-        self.current_obs, info = self.env.reset(**kwargs)
+        returns = self.env.reset(**kwargs)
+        if len(self.env.reset(**kwargs)) == 2:
+            self.current_obs, info = returns
+        else:
+            self.current_obs = returns
+            print(type(returns))
+            info = None
+
         self.reset_internal_params()
         
         return self.current_obs.copy(), info

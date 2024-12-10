@@ -53,7 +53,7 @@ def mlflow_monotoring(subfix=""):
             if len(args) == 1 and \
                     hasattr(args[0], "notrain") and \
                     args[0].notrain:
-                func(*args, **kwargs, use_mlflow=True)
+                return func(*args, **kwargs, use_mlflow=True)
             else:
                 if mlflow.active_run() is not None:
                     print("There is an active run.")
@@ -72,6 +72,6 @@ def mlflow_monotoring(subfix=""):
                         if "hyperparams" in key and isinstance(kwargs[key], dict):
                             [mlflow.log_param(k, v) for k, v in kwargs[key].items()]
 
-                    func(*args, **kwargs, use_mlflow=True)
+                    return func(*args, **kwargs, use_mlflow=True)
         return inner2
     return inner1
