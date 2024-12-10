@@ -17,6 +17,7 @@ ppo_pendulum.zip
 vecnormalize_stats.pkl
 media/
 logs/
+backups/
 
 # C extensions
 *.so
