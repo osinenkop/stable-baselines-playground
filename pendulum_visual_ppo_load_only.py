@@ -89,7 +89,7 @@ is_training = True
 episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
-@rerun_if_error
+# @rerun_if_error
 @mlflow_monotoring()
 def main(**kwargs):
     # Register signal handlers
@@ -145,6 +145,8 @@ def main(**kwargs):
         model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
     else:
         model = PPO.load("ppo_visual_pendulum")
+
+    model.set_logger(loggers)
 
     # Visual evaluation after training or loading
     print("Starting evaluation...")
@@ -205,13 +207,15 @@ def main(**kwargs):
         "state": [],
         "action": [],
         "reward": [],
+        "relax_probability": [],
+        "calf_activated_count": [],
         "accumulated_reward": [],
     }
     accumulated_reward = np.float32(0)
     fig, ax = plt.subplots()
 
     # Run the simulation with the trained agent
-    for _ in range(1000):
+    for step_i in range(1000):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
@@ -230,10 +234,13 @@ def main(**kwargs):
 
         accumulated_reward += reward
 
-        info_dict["state"].append(obs)
-        info_dict["action"].append(action)
+        info_dict["state"].append(obs[0])
+        info_dict["action"].append(action[0])
         info_dict["reward"].append(reward)
+        info_dict["relax_probability"].append(env_agent.relax_prob.copy())
+        info_dict["calf_activated_count"].append(env_agent.calf_activated_count)
         info_dict["accumulated_reward"].append(accumulated_reward.copy())
+        model.logger.dump(step_i)
 
         # ax.imshow(obs[0][-3:].transpose((1, 2, 0)).copy())
         # ax.axis("off")
@@ -258,4 +265,4 @@ def main(**kwargs):
     print(df.drop(columns=["state"]).tail(2))
 
 if __name__ == "__main__":
-    main()    
+    main()
