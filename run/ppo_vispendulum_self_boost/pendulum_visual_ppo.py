@@ -171,7 +171,7 @@ def main():
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
-            env.save("vecnormalize_stats.pkl")
+            env.save("artifacts/checkpoints/vecnormalize_stats.pkl")
 
         print("Training completed.")
     else:
@@ -180,7 +180,7 @@ def main():
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
-            env = VecNormalize.load("vecnormalize_stats.pkl", env)
+            env = VecNormalize.load("artifacts/checkpoints/vecnormalize_stats.pkl", env)
             env.training = False  # Set to evaluation mode
             env.norm_reward = False  # Disable reward normalization for evaluation
 
