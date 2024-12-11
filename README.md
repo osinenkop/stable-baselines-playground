@@ -178,7 +178,7 @@ Option | Description |
 | `--log` | Enable logging and printing of simulation data |
 
 #### Results
-All the results are calculated using the [Jupiter Notebook](./notebooks/analysis.ipynb) 
+All the results are calculated using the [Jupyter Notebook](./analysis/ppo_pendulum_calf_wrapper_eval/analysis.ipynb) 
 
 | Case                                |   ('last_accumulated_reward', 'std') |   ('last_accumulated_reward', 'var') |   ('last_accumulated_reward', 'min') |   ('last_accumulated_reward', 'mean') |   ('last_accumulated_reward', 'median') |   ('last_accumulated_reward', 'max') |
 |:------------------------------------|-------------------------------------:|-------------------------------------:|-------------------------------------:|--------------------------------------:|----------------------------------------:|-------------------------------------:|
