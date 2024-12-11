@@ -25,7 +25,7 @@ from wrapper.pendulum_wrapper import ResizeObservation
 from wrapper.pendulum_wrapper import LoggingWrapper
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
-from wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper
+from wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper, RelaxProb
 
 from callback.plotting_callback import PlottingCallback
 from callback.grad_monitor_callback import GradientMonitorCallback
@@ -122,12 +122,15 @@ def main(**kwargs):
     parser.add_argument("--eval-name", 
                         type=str,
                         help="Choose experimental name for logging")
+    parser.add_argument("--calf-init-relax", 
+                        type=float,
+                        help="Choose experimental name for logging")
     args = parser.parse_args()
 
 
     calf_hyperparams = {
         "calf_decay_rate": 0.01,
-        "initial_relax_prob": 0.5,
+        "initial_relax_prob": args.calf_init_relax,
         "relax_prob_base_step_factor": .95,
         "relax_prob_episode_factor": 0.
     }
@@ -151,15 +154,6 @@ def main(**kwargs):
     # Visual evaluation after training or loading
     print("Starting evaluation...")
     
-    def make_env():
-        def _init():
-            env = PendulumVisualNoArrowParallelizable()
-            env = TimeLimit(env, max_episode_steps=episode_timesteps)
-            env = ResizeObservation(env, (image_height, image_width))
-            
-            return env
-        return _init
-
     # Now enable rendering with pygame for testing
     import pygame
     
@@ -175,6 +169,7 @@ def main(**kwargs):
     env_agent = VecTransposeImage(env_agent)
     env_agent = CALFWrapper(
                 env_agent,
+                relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
                 fallback_policy=CALF_PPOPendulumWrapper(
                                     args.fallback_checkpoint,
                                     action_high=env_agent.action_space.high,
@@ -237,7 +232,7 @@ def main(**kwargs):
         info_dict["state"].append(obs[0])
         info_dict["action"].append(action[0])
         info_dict["reward"].append(reward)
-        info_dict["relax_probability"].append(env_agent.relax_prob.copy())
+        info_dict["relax_probability"].append(env_agent.relax_prob)
         info_dict["calf_activated_count"].append(env_agent.calf_activated_count)
         info_dict["accumulated_reward"].append(accumulated_reward.copy())
         model.logger.dump(step_i)
