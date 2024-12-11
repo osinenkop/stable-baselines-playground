@@ -13,7 +13,7 @@ from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
 from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
+from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper, RelaxProb
 from controller.energybased import EnergyBasedController
 from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -88,6 +88,7 @@ def main(**kwargs):
             env = CALFWrapper(
                 env,
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
                 relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
