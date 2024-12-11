@@ -1,7 +1,4 @@
 import argparse
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
 import signal
 
 from stable_baselines3 import PPO
@@ -11,30 +8,23 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
-from stable_baselines3.common.utils import get_linear_fn
-from stable_baselines3.common.preprocessing import is_image_space
+from gymnasium.wrappers import TimeLimit
 
 from model.cnn import CustomCNN
 
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import PendulumVisualNoArrowParallelizable
+from src.mygym.my_pendulum import PendulumVisual
+from src.mygym.my_pendulum import PendulumVisualNoArrowParallelizable
 
-from wrapper.pendulum_wrapper import NormalizeObservation
-from wrapper.pendulum_wrapper import ResizeObservation
-from wrapper.pendulum_wrapper import LoggingWrapper
-from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
+from src.wrapper.pendulum_wrapper import ResizeObservation
+from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
-from callback.plotting_callback import PlottingCallback
-from callback.grad_monitor_callback import GradientMonitorCallback
-from callback.cnn_output_callback import SaveCNNOutputCallback
+from src.callback.plotting_callback import PlottingCallback
+from src.callback.grad_monitor_callback import GradientMonitorCallback
 
-from gymnasium.wrappers import TimeLimit
-from gymnasium.wrappers.frame_stack import FrameStack
+from src.agent.debug_ppo import DebugPPO
 
-from agent.debug_ppo import DebugPPO
+from src.utilities.intercept_termination import save_model_and_data, signal_handler
 
-from utilities.clean_cnn_outputs import clean_cnn_outputs
-from utilities.intercept_termination import save_model_and_data, signal_handler
 
 # Global parameters
 total_timesteps = 131072

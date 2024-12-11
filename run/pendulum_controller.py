@@ -1,20 +1,12 @@
 import matplotlib
-import matplotlib.pyplot as plt
 import gymnasium as gym
 import argparse
 import numpy as np
 import time
 import pygame
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
-from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import PendulumRenderFix
 # Import the custom callback from callback.py
-from callback.plotting_callback import PlottingCallback
-from stable_baselines3.common.utils import get_linear_fn
-from controller.pid import PIDController
-from controller.energybased import EnergyBasedController
+from src.controller.energybased import EnergyBasedController
 
 import pandas as pd
 
@@ -40,7 +32,7 @@ else:
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="mygym.my_pendulum:PendulumRenderFix",
+    entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
 env_display = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)

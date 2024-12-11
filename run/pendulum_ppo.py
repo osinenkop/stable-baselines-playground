@@ -4,14 +4,13 @@ import gymnasium as gym
 import argparse
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
-from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import PendulumRenderFix
-# Import the custom callback from callback.py
-from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
-from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
+from gymnasium.wrappers import TimeLimit
+
+# Import the custom callback from callback.py
+from src.callback.plotting_callback import PlottingCallback
+from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
 import pandas as pd
 import os
@@ -22,7 +21,7 @@ matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="mygym.my_pendulum:PendulumRenderFix",
+    entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
 @mlflow_monotoring()

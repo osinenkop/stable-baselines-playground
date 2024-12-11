@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
-import sys
-import matplotlib.pyplot as plt
 
-from gymnasium import spaces
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from typing import Tuple
+
 
 class CustomCNN(BaseFeaturesExtractor):
     """

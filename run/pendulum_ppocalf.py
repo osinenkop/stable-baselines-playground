@@ -7,14 +7,14 @@ import time
 import torch
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
-from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import PendulumRenderFix
-# Import the custom callback from callback.py
-from callback.plotting_callback import PlottingCallback
 from stable_baselines3.common.utils import get_linear_fn
-from controller.pid import PIDController
-from controller.energybased import EnergyBasedController
+from gymnasium.wrappers import TimeLimit
+
+# Import the custom callback from callback.py
+from src.callback.plotting_callback import PlottingCallback
+from src.controller.pid import PIDController
+from src.controller.energybased import EnergyBasedController
+
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
@@ -28,7 +28,7 @@ matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="mygym.my_pendulum:PendulumRenderFix",
+    entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
 # Use your custom environment for training
