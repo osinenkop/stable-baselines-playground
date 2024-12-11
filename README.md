@@ -38,27 +38,27 @@ Some issues you may find their solution [here](docs/error_resolution.md).
 To train a PPO agent on the standard pendulum environment:
 
 ```bash
-python pendulum_ppo.py
+python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
 ```
 
 To train an agent on the visual pendulum environment using stacked image frames:
     
 ```bash
-python pendulum_visual_ppo.py
+python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py
 ```
 
 #### Evaluation
 After training, evaluate the agent with (example command):
 
 ```bash
-python pendulum_visual_ppo.py --notrain
+python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py --notrain
 ```
 
 A successfully pre-trained agent can be found [here](./workable_visual_PPO4pendulum.zip).
 It was run using the following command:
 
 ```bash
- python pendulum_visual_ppo.py --normalize
+ python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py --normalize
 ```
 
 The following configuration was used:
@@ -98,7 +98,7 @@ Option | Description |
 To visualize and save the CNN feature maps for the visual pendulum:
 
 ```bash
-python -m test.test_visual_pendulum_cnn_stacked
+python -m scripts.test_visual_pendulum_cnn_stacked
 ```
 
 #### Options for Testing CNN.
@@ -131,7 +131,7 @@ Processes stacked input frames (e.g., 4 frames) for policy learning.
 #### Training
 PPO is trained using as mentioned above with the standard pendulum environment:
 ```bash
-python pendulum_ppo.py
+python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
 ```
 
 The following configuration was used:
@@ -160,11 +160,11 @@ To evaluate vanilla PPO with and without CALF wrapper (using Pendulum environmen
   
 Use this pre-defined script:
 ```shell
-source evaluation.sh
+source run/ppo_pendulum_calf_wrapper_eval/evaluation.sh
 ```
 Or to run 30 seeds for each case with corresponding initial states:
 ```shell
-source evaluation_loop.sh
+source run/ppo_pendulum_calf_wrapper_eval/evaluation_loop.sh
 ```
 
 #### Options
