@@ -125,6 +125,68 @@ The custom CNN architecture used in this repository for visual PPO is as follows
 Processes stacked input frames (e.g., 4 frames) for policy learning.
 [Here](./gfx/CNN_architecture_PPO4Pendulum.png) is a graphical representation of the CNN architecture.
 
+### Train PPO and Evaluate PPO (Pendulum Environment) with CALF Wrapper
+#### Training
+PPO is trained using as mentioned above with the standard pendulum environment:
+```bash
+python pendulum_ppo.py
+```
+
+The following configuration was used:
+
+```
+ppo_hyperparams = {
+        "learning_rate": 5e-4,
+        "n_steps": 4000,
+        "batch_size": 200,
+        "gamma": 0.98,
+        "gae_lambda": 0.9,
+        "clip_range": 0.05,
+        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),
+        "use_sde": True,
+        "sde_sample_freq": 4,
+    }
+```
+
+#### Evaluation scripts
+To evaluate vanilla PPO with and without CALF wrapper (using Pendulum environment), there are 5 evaluation scenario should be run:
+- Welled-trained vanilla PPO is evaluated with standard Pedulum environment
+- Under-trained vanilla PPO is evaluated with standard Pedulum environment
+- Welled-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
+- Under-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
+- Traditional controller algorithm (as a reference, and used as CALF fallback controller as well) is evaluated
+  
+Use this pre-defined script:
+```shell
+source evaluation.sh
+```
+Or to run 30 seeds for each case with corresponding initial states:
+```shell
+source evaluation_loop.sh
+```
+
+#### Options
+
+Option | Description |
+| ----- |  ----- |
+| `--notrain` | Skip training and only run evaluation |
+| `--seed` | Random seed to initialize initial state of the pendulum |
+| `--loadstep` | Choose the checkpoint step want to load in the evaluation phase (i.e. 200000, 201000 500000) |
+| `--console` | Run in console-only mode (no graphical outputs) |
+| `--log` | Enable logging and printing of simulation data |
+
+#### Results
+All the results are calculated using the [Jupiter Notebook](./notebooks/analysis.ipynb) 
+
+| Case                                |   ('last_accumulated_reward', 'std') |   ('last_accumulated_reward', 'var') |   ('last_accumulated_reward', 'min') |   ('last_accumulated_reward', 'mean') |   ('last_accumulated_reward', 'median') |   ('last_accumulated_reward', 'max') |
+|:------------------------------------|-------------------------------------:|-------------------------------------:|-------------------------------------:|--------------------------------------:|----------------------------------------:|-------------------------------------:|
+| EnergyBasedController               |                              824.157 |                     679234           |                             -2935.31 |                             -1167.03  |                                -996.113 |                           -7.14436   |
+| VanillaPPO_undertrained             |                             2600.24  |                          6.76126e+06 |                             -7583.16 |                             -2925.43  |                               -2754.4   |                          -13.2409    |
+| VanillaPPO_undertrained+CALFWrapper |                              717.357 |                     514601           |                             -3967.2  |                              -368.948 |                                -194.519 |                           -7.2526    |
+| VanillaPPO_welltrained              |                             1945.61  |                          3.78538e+06 |                             -7545.64 |                             -1020.94  |                                -146.102 |                           -0.0943505 |
+| VanillaPPO_welltrained+CALFWrapper  |                              340.508 |                     115946           |                             -1249.81 |                              -308.321 |                                -134.906 |                           -6.92786   |
+
+![Box plot](gfx/boxplot.png)
 ## Author
 
 Pavel Osinenko, 2024

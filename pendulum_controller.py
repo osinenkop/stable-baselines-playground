@@ -1,24 +1,41 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import gymnasium as gym
+import argparse
 import numpy as np
 import time
 import pygame
-import os
-import csv
-from datetime import datetime
-import argparse
 
+from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import BaseCallback
+from gymnasium.wrappers import TimeLimit
+from mygym.my_pendulum import PendulumRenderFix
+# Import the custom callback from callback.py
+from callback.plotting_callback import PlottingCallback
+from stable_baselines3.common.utils import get_linear_fn
+from controller.pid import PIDController
 from controller.energybased import EnergyBasedController
+
+import pandas as pd
+
+
+# Initialize the argument parser
+parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
+parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
+parser.add_argument("--seed", 
+                    type=int,
+                    help="Choose random seed",
+                    default=42)
+# Parse the arguments
+args = parser.parse_args()
 
 print("Simulating controller on pendulum. PRESS SPACE TO PAUSE.")
 
-matplotlib.use("TkAgg")  # Use "TkAgg" or another backend compatible with your system.
-
-# Parse command-line arguments
-parser = argparse.ArgumentParser(description="Simulate energy-based pendulum controller.")
-parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-args = parser.parse_args()
+if args.console:
+    matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
+else:
+    matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
 # Register the environment
 gym.envs.registration.register(
@@ -26,42 +43,34 @@ gym.envs.registration.register(
     entry_point="mygym.my_pendulum:PendulumRenderFix",
 )
 
-env_display = gym.make("PendulumRenderFix-v0", render_mode="human")
+env_display = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
 
 # Reset the environment
-obs, _ = env_display.reset()
+obs, _ = env_display.reset(seed=args.seed)
 cos_angle, sin_angle, angular_velocity = obs
 angle = np.arctan2(sin_angle, cos_angle)
-
-dt = 0.05  # Action time step for the simulation
 
 # ---------------------------------
 # Initialize the energy-based controller
 controller = EnergyBasedController()
 # ---------------------------------
 
-# Initialize logging if `--log` is enabled
-if args.log:
-    simdata_dir = "simdata"
-    os.makedirs(simdata_dir, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join(simdata_dir, f"pendulum_energy_{timestamp}.csv")
-
-    # Write CSV header
-    with open(log_file, mode="w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["time", "angle", "angular_velocity", "action", "reward", "accumulated_reward"])
+info_dict = {
+    "state": [],
+    "action": [],
+    "reward": [],
+    "accumulated_reward": [],
+}
+accumulated_reward = 0
 
 # Initialize pygame and set the display size
 pygame.init()
+# screen = pygame.display.set_mode((800, 600))  # Adjust the dimensions as needed
 
 paused = False  # Variable to track the pause state
 
-# Initialize reward tracking
-accumulated_reward = 0.0
-
 # Run the simulation and render it
-for step in range(1500):
+for _ in range(1000):
 
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
@@ -91,33 +100,27 @@ for step in range(1500):
     # Clip the action to the valid range for the Pendulum environment
     action = np.clip(control_action, -2.0, 2.0)
 
-    # Step the environment
-    obs, reward, done, _, _ = env_display.step([action])
-
-    # Convert reward to scalar (from numpy.ndarray)
-    reward = float(reward)
+    obs, reward, done, _, _ = env_display.step(action)
 
     # Update the observation
     cos_angle, sin_angle, angular_velocity = obs
     angle = np.arctan2(sin_angle, cos_angle)
 
-    # Accumulate rewards
     accumulated_reward += reward
 
-    if args.log:
-        # Log and print data
-        t = step * dt
-        log_entry = (
-            f"| t: {t:.2f} | angle: {angle:.2f} | angular_velocity: {angular_velocity:.2f} | "
-            f"action: {action:.2f} | reward: {reward:.2f} | accumulated_reward: {accumulated_reward:.2f} |"
-        )
-        print(log_entry)
-        with open(log_file, mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([t, angle, angular_velocity, action, reward, accumulated_reward])
-
-    # Wait for the next time step
-    time.sleep(dt)
+    info_dict["state"].append(obs)
+    info_dict["action"].append(action)
+    info_dict["reward"].append(reward)
+    info_dict["accumulated_reward"].append(accumulated_reward.copy())
 
 # Close the environment after the simulation
 env_display.close()
+
+df = pd.DataFrame(info_dict)
+file_name = f"energy_based_run_seed_{args.seed}.csv"
+
+if args.log:
+    df.to_csv("logs/" + file_name)
+
+print("Case:", file_name)
+print(df.tail(2))
