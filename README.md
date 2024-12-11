@@ -27,6 +27,8 @@ Make sure to install the required dependencies, including `tkinter` for visualiz
 pip install -r requirements.txt
 ```
 
+Some issues you may find their solution [here](docs/error_resolution.md).
+
 ## Running the Scripts
 
 ### Train and Evaluate PPO (Pendulum Environment)
