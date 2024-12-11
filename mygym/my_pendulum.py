@@ -186,7 +186,6 @@ class PendulumRenderFix(gym.Env):
             self.render()
         return self._get_obs(), {}
 
-
     def _get_obs(self):
         theta, thetadot = self.state
         return np.array([np.cos(theta), np.sin(theta), thetadot], dtype=np.float32)

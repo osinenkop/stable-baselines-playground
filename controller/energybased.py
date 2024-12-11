@@ -35,3 +35,4 @@ class EnergyBasedController:
             self.debug and print(f"angle: {angle:.2f}, angular_velocity: {angular_velocity:.2f}, control_action: {np.clip(control_action, -2.0, 2.0):.2f} HOLD")
 
         return control_action
+

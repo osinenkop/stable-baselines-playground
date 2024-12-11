@@ -1,7 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import gymnasium as gym
-import argparse
 import numpy as np
 import time
 import pygame
@@ -98,7 +97,7 @@ for _ in range(1000):
     control_action = controller.compute(angle, cos_angle, angular_velocity)
 
     # Clip the action to the valid range for the Pendulum environment
-    action = np.clip([control_action], -2.0, 2.0)
+    action = np.clip(control_action, -2.0, 2.0)
 
     obs, reward, done, _, _ = env_display.step(action)
 
