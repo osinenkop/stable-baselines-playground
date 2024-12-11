@@ -5,7 +5,7 @@ import pandas as pd  # Use pandas to save data
 from stable_baselines3.common.callbacks import BaseCallback
 
 class PlottingCallback(BaseCallback):
-    def __init__(self, save_path="episode_rewards.csv", update_every_episodes=1, verbose=0):
+    def __init__(self, save_path="logs/episode_rewards.csv", update_every_episodes=1, verbose=0):
         super(PlottingCallback, self).__init__(verbose)
         self.episode_rewards = []  # List to store rewards for each episode
         self.episodes = []  # List to store episode numbers

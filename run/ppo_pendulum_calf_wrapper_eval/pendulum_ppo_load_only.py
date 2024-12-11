@@ -1,26 +1,19 @@
 import matplotlib
-import matplotlib.pyplot as plt
 import gymnasium as gym
 import argparse
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
-from gymnasium.wrappers import TimeLimit
-from mygym.my_pendulum import PendulumRenderFix
-# Import the custom callback from callback.py
-from callback.plotting_callback import PlottingCallback
-from stable_baselines3.common.utils import get_linear_fn
-from utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-from wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
-from controller.energybased import EnergyBasedController
-from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
+from gymnasium.wrappers import TimeLimit
+from src.mygym.my_pendulum import PendulumRenderFix
+from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
+from src.wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
+from src.controller.energybased import EnergyBasedController
+
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 import pandas as pd
 import os
-import numpy as np
 
 
 os.makedirs("logs", exist_ok=True)
@@ -30,7 +23,7 @@ matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 # Register the environment
 gym.envs.registration.register(
     id="PendulumRenderFix-v0",
-    entry_point="mygym.my_pendulum:PendulumRenderFix",
+    entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
 def parse_args(configs):
@@ -105,7 +98,7 @@ def main(**kwargs):
     env_agent = DummyVecEnv([make_env()])
 
     # Load the model (if needed)
-    model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
     if loggers:
         model.set_logger(loggers)
 

@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load the episode rewards from the CSV file
-data = pd.read_csv("episode_rewards.csv")
+data = pd.read_csv("logs/episode_rewards.csv")
 
 # Plot the learning curve
 plt.figure(figsize=(10, 5))

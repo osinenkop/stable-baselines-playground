@@ -4,7 +4,7 @@ class GradientMonitorCallback(BaseCallback):
     """
     Custom callback to monitor the gradients of the CNN during training and save them for visualization.
     """
-    def __init__(self, log_file="gradients_log.csv", verbose=0):
+    def __init__(self, log_file="logs/gradients_log.csv", verbose=0):
         super().__init__(verbose)
         self.log_file = log_file
 

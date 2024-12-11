@@ -1,7 +1,4 @@
 import argparse
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
 import signal
 
 from stable_baselines3 import PPO
@@ -11,30 +8,23 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
-from stable_baselines3.common.utils import get_linear_fn
-from stable_baselines3.common.preprocessing import is_image_space
+from gymnasium.wrappers import TimeLimit
 
 from model.cnn import CustomCNN
 
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import PendulumVisualNoArrowParallelizable
+from src.mygym.my_pendulum import PendulumVisual
+from src.mygym.my_pendulum import PendulumVisualNoArrowParallelizable
 
-from wrapper.pendulum_wrapper import NormalizeObservation
-from wrapper.pendulum_wrapper import ResizeObservation
-from wrapper.pendulum_wrapper import LoggingWrapper
-from wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
+from src.wrapper.pendulum_wrapper import ResizeObservation
+from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
 
-from callback.plotting_callback import PlottingCallback
-from callback.grad_monitor_callback import GradientMonitorCallback
-from callback.cnn_output_callback import SaveCNNOutputCallback
+from src.callback.plotting_callback import PlottingCallback
+from src.callback.grad_monitor_callback import GradientMonitorCallback
 
-from gymnasium.wrappers import TimeLimit
-from gymnasium.wrappers.frame_stack import FrameStack
+from src.agent.debug_ppo import DebugPPO
 
-from agent.debug_ppo import DebugPPO
+from src.utilities.intercept_termination import save_model_and_data, signal_handler
 
-from utilities.clean_cnn_outputs import clean_cnn_outputs
-from utilities.intercept_termination import save_model_and_data, signal_handler
 
 # Global parameters
 total_timesteps = 131072
@@ -145,7 +135,7 @@ def main():
         # Set up a checkpoint callback to save the model every 'save_freq' steps
         checkpoint_callback = CheckpointCallback(
             save_freq=save_model_every_steps,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
+            save_path="./artifacts/checkpoints",  # Directory to save the model
             name_prefix="ppo_visual_pendulum"
         )
 
@@ -158,7 +148,7 @@ def main():
         # If --console flag is set, disable the plot and just save the data
         if args.console:
             plotting_callback.figure = None  # Disable plotting
-            print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
+            print("Console mode: Graphical output disabled. Episode rewards will be saved to 'logs/episode_rewards.csv'.")
 
         # Combine both callbacks using CallbackList
         callback = CallbackList([
@@ -177,20 +167,20 @@ def main():
         finally:
             print("Training completed or interrupted.")
 
-        model.save("ppo_visual_pendulum")
+        model.save("artifacts/checkpoints/ppo_visual_pendulum")
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
-            env.save("vecnormalize_stats.pkl")
+            env.save("artifacts/checkpoints/vecnormalize_stats.pkl")
 
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
-        model = PPO.load("ppo_visual_pendulum")
+        model = PPO.load("artifacts/checkpoints/ppo_visual_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
-            env = VecNormalize.load("vecnormalize_stats.pkl", env)
+            env = VecNormalize.load("artifacts/checkpoints/vecnormalize_stats.pkl", env)
             env.training = False  # Set to evaluation mode
             env.norm_reward = False  # Disable reward normalization for evaluation
 

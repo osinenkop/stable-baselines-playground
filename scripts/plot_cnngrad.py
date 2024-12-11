@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # Load the CSV file and assign proper headers
 gradient_data = pd.read_csv(
-    "gradients_log.csv",
+    "logs/gradients_log.csv",
     header=None,  # Since the file has no proper header, we assign it manually
     names=["Timestep", "Layer", "Gradient Mean", "Gradient Std"]
 )

@@ -2,7 +2,6 @@ __credits__ = ["Carlos Luis, Pavel Osinenko"]
 
 import numpy as np
 import gymnasium as gym
-import cv2
 import matplotlib.pyplot as plt
 
 from os import path
@@ -12,7 +11,7 @@ from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 from gymnasium import spaces  # Import spaces to define the observation space
 from typing import Optional
-from gymnasium.spaces import Box
+
 
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
