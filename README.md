@@ -24,7 +24,7 @@ To work with this repository, it is recommended to use a virtual environment. Re
 Make sure to install the required dependencies, including `tkinter` for visualizations:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Some issues you may find their solution [here](docs/error_resolution.md).
