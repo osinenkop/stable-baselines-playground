@@ -148,7 +148,7 @@ def main():
         # If --console flag is set, disable the plot and just save the data
         if args.console:
             plotting_callback.figure = None  # Disable plotting
-            print("Console mode: Graphical output disabled. Episode rewards will be saved to 'episode_rewards.csv'.")
+            print("Console mode: Graphical output disabled. Episode rewards will be saved to 'logs/episode_rewards.csv'.")
 
         # Combine both callbacks using CallbackList
         callback = CallbackList([
