@@ -124,12 +124,17 @@ def main(**kwargs):
                         help="Choose experimental name for logging")
     parser.add_argument("--calf-init-relax", 
                         type=float,
-                        help="Choose experimental name for logging")
+                        help="Choose initial relax probability",
+                        default=0.5)
+    parser.add_argument("--calf-decay-rate", 
+                        type=float,
+                        help="Choose CALF decay rate",
+                        default=0.01)
     args = parser.parse_args()
 
 
     calf_hyperparams = {
-        "calf_decay_rate": 0.01,
+        "calf_decay_rate": args.calf_decay_rate,
         "initial_relax_prob": args.calf_init_relax,
         "relax_prob_base_step_factor": .95,
         "relax_prob_episode_factor": 0.
