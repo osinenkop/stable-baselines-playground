@@ -135,7 +135,7 @@ def main():
         # Set up a checkpoint callback to save the model every 'save_freq' steps
         checkpoint_callback = CheckpointCallback(
             save_freq=save_model_every_steps,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
+            save_path="./artifacts/checkpoints",  # Directory to save the model
             name_prefix="ppo_visual_pendulum"
         )
 
@@ -167,7 +167,7 @@ def main():
         finally:
             print("Training completed or interrupted.")
 
-        model.save("ppo_visual_pendulum")
+        model.save("artifacts/checkpoints/ppo_visual_pendulum")
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
@@ -176,7 +176,7 @@ def main():
         print("Training completed.")
     else:
         print("Skipping training. Loading the saved model...")
-        model = PPO.load("ppo_visual_pendulum")
+        model = PPO.load("artifacts/checkpoints/ppo_visual_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:

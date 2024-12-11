@@ -98,7 +98,7 @@ def main(**kwargs):
     env_agent = DummyVecEnv([make_env()])
 
     # Load the model (if needed)
-    model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
     if loggers:
         model.set_logger(loggers)
 

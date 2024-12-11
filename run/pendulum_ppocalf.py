@@ -94,7 +94,7 @@ if not args.notrain:
     print("Training the model...")
     model.learn(total_timesteps=total_timesteps, callback=plotting_callback)
     # Save the model after training
-    model.save("ppo_pendulum")
+    model.save("artifacts/checkpoints/ppo_pendulum")
     # Close the plot after training
     plt.ioff()  # Turn off interactive mode
     # plt.show()  # Show the final plot
@@ -109,7 +109,7 @@ import pygame
 env = gym.make("PendulumRenderFix-v0", render_mode="human")
 
 # Load the model (if needed)
-model = PPO.load("ppo_pendulum")
+model = PPO.load("artifacts/checkpoints/ppo_pendulum")
 
 # Reset the environment
 # obs, _ = env.reset()

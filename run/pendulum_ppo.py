@@ -100,7 +100,7 @@ def main(**kwargs):
 
         checkpoint_callback = CheckpointCallback(
             save_freq=1000,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
+            save_path="./artifacts/checkpoints",  # Directory to save the model
             name_prefix="ppo_pendulum"
             )
 
@@ -115,7 +115,7 @@ def main(**kwargs):
         print("Training the model...")
         model.learn(total_timesteps=total_timesteps, callback=callback)
         # Save the model after training
-        model.save("ppo_pendulum")
+        model.save("artifacts/checkpoints/ppo_pendulum")
         # Close the plot after training
         plt.ioff()  # Turn off interactive mode
         # plt.show()  # Show the final plot
@@ -134,7 +134,10 @@ def main(**kwargs):
     env = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
 
     # Load the model (if needed)
-    model = PPO.load(f"checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    if args.loadstep:
+        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    else:
+        model = PPO.load("artifacts/checkpoints/ppo_pendulum")
 
     # Reset the environment
     obs, _ = env.reset(seed=args.seed)

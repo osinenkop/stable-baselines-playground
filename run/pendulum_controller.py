@@ -9,7 +9,10 @@ import pygame
 from src.controller.energybased import EnergyBasedController
 
 import pandas as pd
+import os
 
+
+os.makedirs("logs", exist_ok=True)
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
