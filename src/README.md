@@ -30,3 +30,11 @@ This directory contains the core implementation of the project. Below is a detai
   - Environment modification layers
   - Features the **CALFWrapper** (Critic As Lyapunov Function)
   - Implements state/reward transformations and additional monitoring
+
+## Contributing Guidelines
+
+### Code Modifications
+- Add new core functionality to the [`src/`](./) directory
+- When modifying existing code, ensure backwards compatibility
+- Verify that existing experiments and results remain valid
+- Document all significant changes
