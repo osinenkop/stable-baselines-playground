@@ -26,7 +26,7 @@ do
                         --calf-decay-rate $decay_rate \
                         --fallback-checkpoint "backups/2024-12-09 101010/checkpoints/ppo_visual_pendulum_327680_steps.zip" \
                         --eval-checkpoint "backups/2024-12-09 101010/checkpoints/ppo_visual_pendulum_655360_steps.zip" \
-                        --eval-name "fallback_25_agent_50_${relax_prob}" \
+                        --eval-name "fallback_25_agent_50_${relax_prob}_${decay_rate}" \
                         --log --console --seed $i
 
                 # PYTHONFAULTHANDLER=1 python pendulum_visual_ppo.py --notrain \

@@ -72,6 +72,10 @@ def mlflow_monotoring(subfix=""):
                         if "hyperparams" in key and isinstance(kwargs[key], dict):
                             [mlflow.log_param(k, v) for k, v in kwargs[key].items()]
 
+                    if len(args):
+                        args_dict = vars(args[0])
+                        [mlflow.log_param(k, args_dict[k]) for k in args_dict]
+
                     return func(*args, **kwargs, use_mlflow=True)
         return inner2
     return inner1

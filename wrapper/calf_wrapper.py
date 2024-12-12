@@ -161,6 +161,8 @@ class CALFWrapper(Wrapper):
 
         self.debug and print("[DEBUG]: Line 5")
         
+        self.logger.record("calf/state_value", current_value.cpu().numpy()[0][0])
+        self.logger.record("calf/CALF_value", self.last_good_value.cpu().numpy()[0][0])
         self.logger.record("calf/last_relax_prob", self.relax_prob)
         if not self.relax_prob_episode_activated:
             self.relax_prob_episode_activated = True

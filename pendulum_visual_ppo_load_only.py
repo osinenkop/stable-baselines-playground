@@ -90,48 +90,14 @@ episode_rewards = []  # Collect rewards during training
 gradients = []  # Placeholder for gradients during training
 
 # @rerun_if_error
-@mlflow_monotoring()
-def main(**kwargs):
+@mlflow_monotoring(subfix="_0.1")
+def main(args, **kwargs):
     # Register signal handlers
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
 
     if kwargs.get("use_mlflow"):
         loggers = get_ml_logger()
-    
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
-    parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--fallback-checkpoint", 
-                        type=str,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--eval-checkpoint", 
-                        type=str,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-    parser.add_argument("--eval-name", 
-                        type=str,
-                        help="Choose experimental name for logging")
-    parser.add_argument("--calf-init-relax", 
-                        type=float,
-                        help="Choose initial relax probability",
-                        default=0.5)
-    parser.add_argument("--calf-decay-rate", 
-                        type=float,
-                        help="Choose CALF decay rate",
-                        default=0.01)
-    args = parser.parse_args()
-
 
     calf_hyperparams = {
         "calf_decay_rate": args.calf_decay_rate,
@@ -265,4 +231,36 @@ def main(**kwargs):
     print(df.drop(columns=["state"]).tail(2))
 
 if __name__ == "__main__":
-    main()
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
+    parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
+    parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
+    parser.add_argument("--loadstep", 
+                        type=int,
+                        help="Choose step to load checkpoint")
+    parser.add_argument("--fallback-checkpoint", 
+                        type=str,
+                        help="Choose step to load checkpoint")
+    parser.add_argument("--eval-checkpoint", 
+                        type=str,
+                        help="Choose step to load checkpoint")
+    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
+    parser.add_argument("--seed", 
+                        type=int,
+                        help="Choose random seed",
+                        default=42)
+    parser.add_argument("--eval-name", 
+                        type=str,
+                        help="Choose experimental name for logging")
+    parser.add_argument("--calf-init-relax", 
+                        type=float,
+                        help="Choose initial relax probability",
+                        default=0.5)
+    parser.add_argument("--calf-decay-rate", 
+                        type=float,
+                        help="Choose CALF decay rate",
+                        default=0.01)
+    args = parser.parse_args()
+
+    main(args)
