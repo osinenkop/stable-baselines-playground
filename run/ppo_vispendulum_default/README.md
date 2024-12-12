@@ -1,22 +1,34 @@
+# Visual PPO with CNNs
+
+> [!IMPORTANT]  
+> It's supposed that this subfolder is your working directory
+
+## Idea
+We want to train a PPO agent on the standard pendulum environment and its observation is a stack of RGB images.
+
+## Aim
+It leverages custom Convolutional Neural Networks (CNNs) to process image-based observations and enables effective policy learning with stacked frames.
+
+### Train and Evaluate PPO (Pendulum Environment)
+#### Training
 To train an agent on the visual pendulum environment using stacked image frames:
     
 ```bash
 python pendulum_visual_ppo.py
 ```
 
-#### Evaluation
-After training, evaluate the agent with (example command):
+##### Checkpoints
 
-```bash
-python pendulum_visual_ppo.py --notrain
+The checkpoints have following formats:
+```
+# Checkpoints stored each 1000 steps
+./artifact/checkpoints/ppo_pendulum_<step-number>_steps.zip 
+
+# The best checkpoint after training
+./artifact/checkpoints/ppo_pendulum.zip 
 ```
 
-A successfully pre-trained agent can be found [here](../../artifacts/workable_visual_PPO4pendulum.zip).
-It was run using the following command:
-
-```bash
- python pendulum_visual_ppo.py --normalize
-```
+##### Configurations
 
 The following configuration was used:
 
@@ -40,6 +52,20 @@ ppo_hyperparams = {
 ```
 
 ... and 4 stacked frames.
+
+#### Evaluation
+After training, evaluate the agent with (example command):
+
+```bash
+python pendulum_visual_ppo.py --notrain
+```
+
+A successfully pre-trained agent can be found [here](../../artifacts/workable_visual_PPO4pendulum.zip).
+It was run using the following command:
+
+```bash
+ python pendulum_visual_ppo.py --normalize
+```
 
 ## Options
 
