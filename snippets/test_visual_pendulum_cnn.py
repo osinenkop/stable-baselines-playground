@@ -2,9 +2,9 @@ import torch as th
 import numpy as np
 import matplotlib.pyplot as plt
 from gymnasium import spaces  # Import spaces from gymnasium
-from model.cnn import CustomCNN
-from mygym.my_pendulum import PendulumVisual 
-from mygym.my_pendulum import ResizeObservation 
+from src.model.cnn import CustomCNN
+from src.mygym.my_pendulum import PendulumVisual 
+from src.mygym.my_pendulum import ResizeObservation 
 
 # Initialize the custom Pendulum environment
 image_height=50

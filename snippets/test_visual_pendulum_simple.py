@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import ResizeObservation 
+from src.mygym.my_pendulum import PendulumVisual
+from src.mygym.my_pendulum import ResizeObservation 
 
 # Environment for the agent (using 'rgb_array' mode)
 env_agent = PendulumVisual(render_mode="rgb_array")

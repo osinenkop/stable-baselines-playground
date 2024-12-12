@@ -1,3 +1,11 @@
+# PPO with CALFWrapper evaluation
+
+## Idea
+We want to train a PPO agent on the standard pendulum environment and evaluate it with the CALFWrapper on Pendulum environment.
+
+## Aim
+Show that PPO evaluated with CALFWrapper is better than PPO without CALFWrapper evaluated on the pendulum environment.
+
 ### Train and Evaluate PPO (Pendulum Environment)
 
 #### Training
@@ -5,7 +13,7 @@
 To train a PPO agent on the standard pendulum environment:
 
 ```bash
-python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
+python pendulum_ppo.py
 ```
 
 
@@ -13,7 +21,7 @@ python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
 #### Training
 PPO is trained using as mentioned above with the standard pendulum environment:
 ```bash
-python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
+python pendulum_ppo.py
 ```
 
 The following configuration was used:
@@ -42,11 +50,11 @@ To evaluate vanilla PPO with and without CALF wrapper (using Pendulum environmen
   
 Use this pre-defined script:
 ```shell
-source run/ppo_pendulum_calf_wrapper_eval/evaluation.sh
+source evaluation.sh
 ```
 Or to run 30 seeds for each case with corresponding initial states:
 ```shell
-source run/ppo_pendulum_calf_wrapper_eval/evaluation_loop.sh
+source evaluation_loop.sh
 ```
 
 #### Options

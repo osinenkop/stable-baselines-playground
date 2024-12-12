@@ -1,4 +1,4 @@
-# [`scripts/`](./): directory for the miscellaneous scripts of the project
+# [`snippets/`](./): directory for the miscellaneous snippets of the project
 
 This directory contains the miscellaneous snippets for the project.
 
