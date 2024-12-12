@@ -1,4 +1,5 @@
 import argparse
+import matplotlib
 import signal
 
 from stable_baselines3 import PPO
@@ -10,7 +11,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 from gymnasium.wrappers import TimeLimit
 
-from model.cnn import CustomCNN
+from src.model.cnn import CustomCNN
 
 from src.mygym.my_pendulum import PendulumVisual
 from src.mygym.my_pendulum import PendulumVisualNoArrowParallelizable
@@ -66,8 +67,9 @@ def main():
 
     # Check if the --console flag is used
     if args.console:
-        import matplotlib
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
+    else:
+        matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:

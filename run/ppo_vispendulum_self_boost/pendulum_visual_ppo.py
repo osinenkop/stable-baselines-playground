@@ -10,7 +10,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import VecNormalize
 from gymnasium.wrappers import TimeLimit
 
-from model.cnn import CustomCNN
+from src.model.cnn import CustomCNN
 
 from src.mygym.my_pendulum import PendulumVisual
 from src.mygym.my_pendulum import PendulumVisualNoArrowParallelizable

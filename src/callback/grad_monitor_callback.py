@@ -1,3 +1,4 @@
+import os
 from stable_baselines3.common.callbacks import BaseCallback
 
 class GradientMonitorCallback(BaseCallback):
@@ -7,6 +8,7 @@ class GradientMonitorCallback(BaseCallback):
     def __init__(self, log_file="logs/gradients_log.csv", verbose=0):
         super().__init__(verbose)
         self.log_file = log_file
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     def _on_step(self) -> bool:
         # Open file in append mode
