@@ -1,7 +1,8 @@
 # PPO with CALFWrapper evaluation
 
 > [!IMPORTANT]  
-> It's supposed that this subfolder is your working directory
+> It's supposed that this subfolder is your working directory: 
+> do not forget to apply in your terminal `cd run/ppo_pendulum_calf_wrapper_eval`
 
 ## Idea
 We want to train a PPO agent on the standard pendulum environment and evaluate it with the CALFWrapper on Pendulum environment.

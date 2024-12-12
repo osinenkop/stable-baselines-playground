@@ -29,20 +29,43 @@ pip install -e .
 
 Some issues you may find their solution [here](docs/error_resolution.md).
 
-## Repo structure
+## Running Experiments
 
-For a detailed understanding of the repository organization, please refer to the README.md files in each of the following directories: 
+All experiments are located in the [`run/`](./run) directory. To create a new experiment:
+1. Create a new subfolder in the [`run/`](./run) directory with self-explanatory name
+2. Include a detailed README.md file documenting the experiment
+3. Follow the repository guidelines outlined below
 
-- [`src/`](./src) - contains the source code for the project
-- [`run/`](./run) - contains the scripts for training and evaluating the agents
-- [`snippets/`](./snippets) - contains ambigous scripts for the project
-- [`analysis/`](./analysis) - contains the scripts for analyzing the results
-- [`docs/`](./docs) - contains the arbitrary documentation for the project
-- [`gfx/`](./gfx) - contains the images for the README
+For detailed information about specific agents, training procedures, and evaluation methods, refer to the README.md files within each subdirectory of [`run/`](./run).
 
-## Getting Started
+## Repository Structure
 
-Go to the [`run/`](./run) directory and refer to the README.md files in each of the subdirectories to get more information about the agents and their training and evaluation.
+The repository is organized into the following directories:
+
+- [`src/`](./src) - Source code and core implementations
+- [`run/`](./run) - Training and evaluation scripts
+- [`snippets/`](./snippets) - Utility scripts and code examples
+- [`analysis/`](./analysis) - Results analysis and visualization tools
+- [`docs/`](./docs) - Project documentation (not used yet)
+- [`gfx/`](./gfx) - Graphics and visual assets
+
+## Contributing Guidelines
+
+### Creating New Experiments
+1. Create a new subdirectory in [`run/`](./run)
+2. Include a comprehensive README.md that details:
+   - Experiment setup and configuration
+   - Launch instructions
+   - Evaluation procedures
+   - Results analysis methods
+   - Artifact storage locations
+
+### Code Modifications
+- Add new core functionality to the [`src/`](./src) directory
+- When modifying existing code, ensure backwards compatibility
+- Verify that existing experiments and results remain valid
+- Document all significant changes
+
 ## Author
 
 Pavel Osinenko, 2024
