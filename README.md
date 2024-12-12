@@ -27,6 +27,8 @@ Make sure to install the required dependencies, including `tkinter` for visualiz
 pip install -e .
 ```
 
+**We recommend to use python-3.11.**
+
 Some issues you may find their solution [here](docs/error_resolution.md).
 
 ## Running Experiments
@@ -78,7 +80,8 @@ For cross-experiment analysis:
 2. Document the relationships between experiments being analyzed
 3. Maintain clear references to the original experiment data
 
-Note: All analysis code should be well-documented and reproducible.
+> Note: 
+> All analysis code should be well-documented and reproducible.
 
 ## Author
 
