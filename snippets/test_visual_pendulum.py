@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
-from mygym.my_pendulum import PendulumVisual
+from src.mygym.my_pendulum import PendulumVisual
 
 # Initialize the custom Pendulum environment
 env = PendulumVisual()

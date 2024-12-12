@@ -27,168 +27,62 @@ Make sure to install the required dependencies, including `tkinter` for visualiz
 pip install -e .
 ```
 
+**We recommend to use python-3.11.**
+
 Some issues you may find their solution [here](docs/error_resolution.md).
 
-## Running the Scripts
+## Running Experiments
 
-### Train and Evaluate PPO (Pendulum Environment)
+All experiments are located in the [`run/`](./run) directory. To create a new experiment:
+1. Create a new subfolder in the [`run/`](./run) directory with self-explanatory name
+2. Include a detailed README.md file documenting the experiment
+3. Follow the repository guidelines outlined below
 
-#### Training
+For detailed information about specific agents, training procedures, and evaluation methods, refer to the README.md files within each subdirectory of [`run/`](./run).
 
-To train a PPO agent on the standard pendulum environment:
+## Repository Structure
 
-```bash
-python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
-```
+The repository is organized into the following directories:
 
-To train an agent on the visual pendulum environment using stacked image frames:
-    
-```bash
-python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py
-```
+- [`src/`](./src) - Source code and core implementations
+- [`run/`](./run) - Training and evaluation scripts
+- [`snippets/`](./snippets) - Utility scripts and code examples
+- [`analysis/`](./analysis) - Results analysis and visualization tools
+- [`docs/`](./docs) - Project documentation (not used yet)
+- [`gfx/`](./gfx) - Graphics and visual assets
 
-#### Evaluation
-After training, evaluate the agent with (example command):
+## Contributing Guidelines
 
-```bash
-python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py --notrain
-```
+### Creating New Experiments
+1. Create a new subdirectory in [`run/`](./run)
+2. Include a comprehensive README.md that details:
+   - Experiment setup and configuration
+   - Launch instructions
+   - Evaluation procedures
+   - Results analysis methods
+   - Artifact storage locations
 
-A successfully pre-trained agent can be found [here](./workable_visual_PPO4pendulum.zip).
-It was run using the following command:
+### Code Modifications
+- Add new core functionality to the [`src/`](./src) directory
+- When modifying existing code, ensure backwards compatibility
+- Verify that existing experiments and results remain valid
+- Document all significant changes
 
-```bash
- python run/ppo_vispendulum_self_boost/pendulum_visual_ppo.py --normalize
-```
+### Analyzing Results
 
-The following configuration was used:
+For experiment analysis:
+1. Create a new subdirectory in [`analysis/`](./analysis) that matches your experiment's name in [`run/`](./run)
+2. Use Jupyter notebooks or other analysis tools to document your findings
+3. Include clear documentation of analysis methods and results
 
-```python
-total_timesteps = 131072
-episode_timesteps = 1024
-image_height = 64
-image_width = 64
-n_steps = 1024
-parallel_envs = 8
+For cross-experiment analysis:
+1. Create a new subdirectory in [`analysis/`](./analysis) with a descriptive name
+2. Document the relationships between experiments being analyzed
+3. Maintain clear references to the original experiment data
 
-# Hyperparameters for PPO
-ppo_hyperparams = {
-    "learning_rate": 4e-4,
-    "n_steps": n_steps,
-    "batch_size": 512,
-    "gamma": 0.99,
-    "gae_lambda": 0.9,
-    "clip_range": 0.2,
-}
-```
+> Note: 
+> All analysis code should be well-documented and reproducible.
 
-... and 4 stacked frames.
-
-## Options
-
-Option | Description |
-| ----- |  ----- |
-| `--notrain` | Skip training and only run evaluation |
-| `--console` | Run in console-only mode (no graphical outputs) |
-| `--normalize` | Normalize reward for stable learning |
-| `--single-thread` | Use a single-threaded environment for training |
-
-### Test a CNN for Visual Pendulum
-
-To visualize and save the CNN feature maps for the visual pendulum:
-
-```bash
-python -m scripts.test_visual_pendulum_cnn_stacked
-```
-
-#### Options for Testing CNN.
-
-Option | Description |
-| ----- |  ----- |
-| `--model` | Path to a trained model (e.g., checkpoints/model.zip) |
-
-This script simulates the environment and saves the extracted CNN feature maps, which can be used to evaluate the model's understanding of the environment.
-
-#### Tested CNN Architecture
-
-The custom CNN architecture used in this repository for visual PPO is as follows:
-
-**Convolutional Layers**:
-
-1. 32 filters, 8x8 kernel, stride 4
-1. 64 filters, 4x4 kernel, stride 2
-1. 64 filters, 3x3 kernel, stride 1
-
-**Fully Connected Layer**:
-256 neurons for feature extraction
-
-**Output**:
-
-Processes stacked input frames (e.g., 4 frames) for policy learning.
-[Here](./gfx/CNN_architecture_PPO4Pendulum.png) is a graphical representation of the CNN architecture.
-
-### Train PPO and Evaluate PPO (Pendulum Environment) with CALF Wrapper
-#### Training
-PPO is trained using as mentioned above with the standard pendulum environment:
-```bash
-python run/ppo_pendulum_calf_wrapper_eval/pendulum_ppo.py
-```
-
-The following configuration was used:
-
-```
-ppo_hyperparams = {
-        "learning_rate": 5e-4,
-        "n_steps": 4000,
-        "batch_size": 200,
-        "gamma": 0.98,
-        "gae_lambda": 0.9,
-        "clip_range": 0.05,
-        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),
-        "use_sde": True,
-        "sde_sample_freq": 4,
-    }
-```
-
-#### Evaluation scripts
-To evaluate vanilla PPO with and without CALF wrapper (using Pendulum environment), there are 5 evaluation scenario should be run:
-- Welled-trained vanilla PPO is evaluated with standard Pedulum environment
-- Under-trained vanilla PPO is evaluated with standard Pedulum environment
-- Welled-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
-- Under-trained vanilla PPO is evaluated with standard Pedulum environment + CALF Wrapper
-- Traditional controller algorithm (as a reference, and used as CALF fallback controller as well) is evaluated
-  
-Use this pre-defined script:
-```shell
-source run/ppo_pendulum_calf_wrapper_eval/evaluation.sh
-```
-Or to run 30 seeds for each case with corresponding initial states:
-```shell
-source run/ppo_pendulum_calf_wrapper_eval/evaluation_loop.sh
-```
-
-#### Options
-
-Option | Description |
-| ----- |  ----- |
-| `--notrain` | Skip training and only run evaluation |
-| `--seed` | Random seed to initialize initial state of the pendulum |
-| `--loadstep` | Choose the checkpoint step want to load in the evaluation phase (i.e. 200000, 201000 500000) |
-| `--console` | Run in console-only mode (no graphical outputs) |
-| `--log` | Enable logging and printing of simulation data |
-
-#### Results
-All the results are calculated using the [Jupyter Notebook](./analysis/ppo_pendulum_calf_wrapper_eval/analysis.ipynb) 
-
-| Case                                |   ('last_accumulated_reward', 'std') |   ('last_accumulated_reward', 'var') |   ('last_accumulated_reward', 'min') |   ('last_accumulated_reward', 'mean') |   ('last_accumulated_reward', 'median') |   ('last_accumulated_reward', 'max') |
-|:------------------------------------|-------------------------------------:|-------------------------------------:|-------------------------------------:|--------------------------------------:|----------------------------------------:|-------------------------------------:|
-| EnergyBasedController               |                              824.157 |                     679234           |                             -2935.31 |                             -1167.03  |                                -996.113 |                           -7.14436   |
-| VanillaPPO_undertrained             |                             2600.24  |                          6.76126e+06 |                             -7583.16 |                             -2925.43  |                               -2754.4   |                          -13.2409    |
-| VanillaPPO_undertrained+CALFWrapper |                              717.357 |                     514601           |                             -3967.2  |                              -368.948 |                                -194.519 |                           -7.2526    |
-| VanillaPPO_welltrained              |                             1945.61  |                          3.78538e+06 |                             -7545.64 |                             -1020.94  |                                -146.102 |                           -0.0943505 |
-| VanillaPPO_welltrained+CALFWrapper  |                              340.508 |                     115946           |                             -1249.81 |                              -308.321 |                                -134.906 |                           -6.92786   |
-
-![Box plot](gfx/boxplot.png)
 ## Author
 
 Pavel Osinenko, 2024
