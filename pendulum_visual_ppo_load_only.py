@@ -241,10 +241,10 @@ if __name__ == "__main__":
                         help="Choose step to load checkpoint")
     parser.add_argument("--fallback-checkpoint", 
                         type=str,
-                        help="Choose step to load checkpoint")
+                        help="Choose checkpoint to load for CALF fallback")
     parser.add_argument("--eval-checkpoint", 
                         type=str,
-                        help="Choose step to load checkpoint")
+                        help="Choose checkpoint to load for base agent in evaluation")
     parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
     parser.add_argument("--seed", 
                         type=int,
