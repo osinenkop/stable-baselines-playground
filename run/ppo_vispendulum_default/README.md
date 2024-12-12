@@ -81,7 +81,7 @@ Option | Description |
 To visualize and save the CNN feature maps for the visual pendulum:
 
 ```bash
-python tests/test_visual_pendulum_cnn_stacked
+python tests/test_visual_pendulum_cnn_stacked.py
 ```
 
 #### Options for Testing CNN.

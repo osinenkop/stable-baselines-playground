@@ -19,6 +19,7 @@ media/
 logs/
 simdata/
 *.csv
+cnn_outputs_test/
 
 # C extensions
 *.so

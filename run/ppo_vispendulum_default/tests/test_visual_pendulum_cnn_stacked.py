@@ -2,22 +2,25 @@ import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecTransposeImage
 from stable_baselines3.common.utils import set_random_seed
 
-from mygym.my_pendulum import PendulumVisual
-from mygym.my_pendulum import PendulumVisualNoArrowParallelizable
+from src.mygym.my_pendulum import PendulumVisual
+from src.mygym.my_pendulum import PendulumVisualNoArrowParallelizable
 
-from wrapper.pendulum_wrapper import ResizeObservation
-from callback.cnn_output_callback import SaveCNNOutputCallback
-from utilities.clean_cnn_outputs import clean_cnn_outputs
+from src.wrapper.pendulum_wrapper import ResizeObservation
+from src.callback.cnn_output_callback import SaveCNNOutputCallback
+from src.utilities.clean_cnn_outputs import clean_cnn_outputs
 
-from model.cnn import CustomCNN
+from src.model.cnn import CustomCNN
 
-from agent.debug_ppo import DebugPPO
+from src.agent.debug_ppo import DebugPPO
 
+
+matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
 # Global parameters
 total_timesteps = 10
