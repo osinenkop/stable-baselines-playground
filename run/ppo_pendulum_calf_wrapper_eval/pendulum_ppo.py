@@ -122,6 +122,11 @@ def main(**kwargs):
         # plt.close("all")   
     else:
         print("Skipping training phase...")
+        # Load the model (if needed)
+        if args.loadstep:
+            model = PPO.load(f"./artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+        else:
+            model = PPO.load("./artifacts/checkpoints/ppo_pendulum")
 
     # ====Evaluation: animated plot to show trained agent's performance
 
@@ -132,12 +137,6 @@ def main(**kwargs):
     np.random.seed(args.seed)
     # env = gym.make("PendulumRenderFix-v0")
     env = gym.make("PendulumRenderFix-v0", render_mode="human" if not args.console else None)
-
-    # Load the model (if needed)
-    if args.loadstep:
-        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
-    else:
-        model = PPO.load("artifacts/checkpoints/ppo_pendulum")
 
     # Reset the environment
     obs, _ = env.reset(seed=args.seed)
