@@ -2,12 +2,12 @@
 
 > [!IMPORTANT]  
 > It's supposed that this subfolder is your working directory: 
-> do not forget to apply in your terminal `cd run/ppo_pendulum_calf_wrapper_eval`
+> Do not forget to apply in your terminal `cd run/ppo_vispendulum_self_boost`
 
 ## Idea
-We want to train a PPO agent on the standard pendulum environment and its observation is a stack of RGB images. Afterwards, we evaluate it with the CALFWrapper on Pendulum environment.
-The `PPO agent` is a arbitrary checkpoint which is not trained well.
-And actions of `CALF fallback` is sampled from another trained PPO which has to under-trained comparing to the current Agent.
+We want to train a PPO agent on the standard pendulum environment and its observation is a stack of RGB images. Afterwards, we evaluate it with the CALFWrapper on the Pendulum environment.
+The `PPO agent` is an arbitrary checkpoint that is poorly trained.
+The actions of `CALF fallback` are sampled from another trained PPO, which has been under-trained compared to the current Agent.
 
 For example:
 - `PPO agent` is a checkpoint at the step 20th.
@@ -32,7 +32,7 @@ CALF Wrapper used for this experiment is modified, due to:
 
 ### Train visual PPO and Evaluate visual PPO (Pendulum Environment) with CALF Wrapper
 #### Training
-Now ppo trained with nomalized rewards and observation is utilized for this experiment:
+Now PPO trained with normalized rewards and observation is utilized for this experiment:
 
 ```bash
 python pendulum_visual_ppo.py --normalize
@@ -40,7 +40,7 @@ python pendulum_visual_ppo.py --normalize
 
 ##### Checkpoints
 
-The checkpoints have following formats:
+The checkpoints have the following formats:
 ```
 run/ppo_vispendulum_self_boost/
 # Checkpoints stored each 8192 steps
@@ -79,9 +79,13 @@ ppo_hyperparams = {
 ```
 
 #### Evaluation
+> [!IMPORTANT]  
+> Please notice that the evaluation should be run only after the proposed training step completed.
+> The training process uses: `python pendulum_visual_ppo.py --normalize`
+
 NOTICE: `--fallback-checkpoint` and `--eval-checkpoint` have to be defined in this step.
 
-After training, to evaluate a visual PPO agent on the normal pendulum environment:
+After training, to evaluate a visual PPO agent in the normal pendulum environment:
 
 ```shell
 python pendulum_visual_ppo.py --notrain \
@@ -114,8 +118,8 @@ And CALF relax probability **linearly decays** over time steps.
 
 #### Monitoring
 
-Please have a look at MLFlow UI to explore more information about CALF variable during evaluation steps.
-To run mlflow, use this command at the project directory:
+Please have a look at MLFlow UI to explore more information about CALF variable during the evaluation steps.
+To run mlflow, use this command in the project directory:
 ```
 mlflow ui
 ```
@@ -125,7 +129,7 @@ The name of each experiment is formed by "<lauch_file_name>_<_subfix_>". Where `
 Main CALF monitoring variables:
 ```
 calf/calf_decay_count: The accumulated number of CALF activation by CALF condition satisfaction.
-calf/calf_activated_count: The accumulated number of CALF activation by both CALF condition satisfaction and Relax probability fires.
+calf/calf_activated_count: The accumulated number of CALF activations by both CALF condition satisfaction and Relax probability fires.
 calf/last_relax_prob: Changes of Relax probability over time step.
 calf/init_relax_prob: initial value of Relax probability.
 ```
@@ -134,14 +138,14 @@ calf/init_relax_prob: initial value of Relax probability.
 
 Option | Description |
 | ----- |  ----- |
-| `--seed` | Random seed to initialize initial state of the pendulum |
+| `--seed` | Random seed to initialize the initial state of the pendulum |
 | `--console` | Run in console-only mode (no graphical outputs) |
 | `--log` | Enable logging and printing of simulation data |
 | `--calf-init-relax` | Choose initial relax probability |
 | `--calf-decay-rate` | Choose desired CALF decay rate |
 | `--fallback-checkpoint` | Choose checkpoint to load for CALF fallback |
 | `--eval-checkpoint` | Choose checkpoint to load for base agent in evaluation |
-| `--eval-name` | Choose experimental logging name which will be stored in the "logs| folder |
+| `--eval-name` | Choose the experimental logging name which will be stored in the "logs| folder |
 
 Or to run 30 seeds with corresponding initial states, varying initial relax probabilities:
 ```
@@ -149,11 +153,11 @@ source evaluation_visual_loop.sh
 ```
 
 ##### Logs
-If `--log` option is enable, the logging files are stored in the "logs" folder. Their names are combined by "<prefix>_<subfix>_seed_{seed_number}.csv".
+If `--log` option is enabled, the logging files are stored in the "logs" folder. Their names are combined by "<prefix>_<subfix>_seed_{seed_number}.csv".
 Where:
 - prefix: determined inside each launch file.
-- subfix: determined by user using `--eval-name` option.
-- seed_number: a random seed for initial condition.
+- subfix: determined by users using `--eval-name` option.
+- seed_number: a random seed for the initial condition.
 
 #### Results
 All the results are calculated using the [Jupyter Notebook](../../analysis/ppo_vispendulum_self_boost/visual_analysis.ipynb) 
