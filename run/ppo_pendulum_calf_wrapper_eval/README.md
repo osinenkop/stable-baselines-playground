@@ -63,7 +63,7 @@ python pendulum_ppo.py --notrain
 Using the same training checkpouint, to evaluate a PPO agent on the pendulum environment + CALF Wrapper:
 
 ```shell
-python pendulum_ppo_load_only.py --notrain
+python pendulum_ppo_eval_calf_wrapper.py --notrain
 ```
 
 The following CALF configuration was used:
