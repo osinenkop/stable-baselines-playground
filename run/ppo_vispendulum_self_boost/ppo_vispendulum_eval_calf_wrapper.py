@@ -27,6 +27,11 @@ from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
 
 class CALF_PPOPendulumWrapper(CALFNominalWrapper):
+    """
+    This class inherits from CALFWrapper and utilizes a pre-trained PPO checkpoint as the fallback mechanism. 
+    During initialization, the class requires the path to a checkpoint of a trained PPO model, 
+    which it integrates as a fallback within the CALFWrapper structure. 
+    """
     def __init__(self, checkpoint_path, action_low, action_high, device="cuda"):
         self.model = PPO.load(checkpoint_path)
         self.device = device

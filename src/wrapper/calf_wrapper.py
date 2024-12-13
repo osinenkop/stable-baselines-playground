@@ -7,11 +7,17 @@ from copy import copy
 
 
 class RelaxProb:
+    """
+    The RelaxProb class manages the relaxation probability with a mechanism for linearly decaying it 
+    over a specified number of time steps. This is particularly useful in scenarios 
+    where a gradual reduction in relaxation probability is required, 
+    such as in reinforcement learning or optimization algorithms. 
+
+    NOTE: At this moment, the RelaxProb only supports the decay of relax_prob over time_step. It is not aware of the change to a new episode.
+    """
     def __init__(self, initial_value: float, total_steps: int):
         """
         Initializes the RelaxProb class.
-
-        NOTE: At this moment, the RelaxProb only supports the decay of relax_prob over time_step. It is not aware of the change to a new episode.
 
         Parameters:
             initial_value: The initial value of relax_prob.
@@ -46,6 +52,9 @@ class RelaxProb:
         return self.relax_prob
 
 class CALFNominalWrapper():
+    """
+    A generic class used for CALFWrapper fallback 
+    """
     def __init__(self, controller):
         self.controller = controller
 
@@ -55,6 +64,11 @@ class CALFNominalWrapper():
 
 
 class CALFEnergyPendulumWrapper(CALFNominalWrapper):
+    """
+    This class inherits from CALFWrapper and integrates with the EnergyBasedController. 
+    It is designed to operate with EnergyBasedController as the primary fallback mechanism within the CALFWrapper structure. 
+    Upon initialization, an instance of the EnergyBasedController must be provided, ensuring seamless energy-based fallback functionality and robust handling of controller logic.
+    """
     def compute_action(self, observation):
         cos_angle, sin_angle, angular_velocity = observation
         angle = np.arctan2(sin_angle, cos_angle)
