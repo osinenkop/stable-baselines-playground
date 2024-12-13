@@ -11,6 +11,8 @@ class RelaxProb:
         """
         Initializes the RelaxProb class.
 
+        NOTE: At this moment, the RelaxProb only supports the decay of relax_prob over time_step. It is not aware of the change to a new episode.
+
         Parameters:
         initial_value (float): The initial value of relax_prob.
         total_steps (int): The total number of time steps over which relax_prob will reduce to 0.
