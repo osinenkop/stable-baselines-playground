@@ -177,6 +177,11 @@ class CALFWrapper(Wrapper):
 
 
 class CALFWrapper_CustomizedRelaxProb(CALFWrapper):
+    """
+    Description: 
+        This wrapper can be used outside of a Vectorized Environment
+        and its relax probability would be updated each step using the class RelaxProb
+    """
     def __init__(self, 
                  env, 
                  relax_decay: RelaxProb,
