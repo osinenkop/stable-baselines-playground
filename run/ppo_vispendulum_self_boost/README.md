@@ -48,6 +48,9 @@ run/ppo_vispendulum_self_boost/
 
 # The best checkpoint after training
 ./artifacts/checkpoints/ppo_visual_pendulum_8192_steps.zip 
+
+# Normalized information 
+./artifacts/checkpoints/vecnormalize_stats.pkl 
 ```
 
 ##### Configurations
