@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import signal
+import time
+import pandas as pd
+import os
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.utils import obs_as_tensor
@@ -15,14 +18,12 @@ from src.mygym.my_pendulum import PendulumVisual
 
 from src.wrapper.pendulum_wrapper import ResizeObservation
 from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
-from src.wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper, RelaxProb
+from src.wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper_CustomizedRelaxProb, RelaxProb
 
 from src.utilities.intercept_termination import signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-import time
-import pandas as pd
-import os
+
 
 
 class CALF_PPOPendulumWrapper(CALFNominalWrapper):
@@ -95,9 +96,9 @@ def main(args, **kwargs):
     if args.eval_checkpoint:
         model = PPO.load(args.eval_checkpoint)
     elif args.loadstep:
-        model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
+        model = PPO.load(f"./artifacts/checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
     else:
-        model = PPO.load("ppo_visual_pendulum")
+        model = PPO.load("./artifacts/ppo_visual_pendulum")
 
     model.set_logger(loggers)
 
@@ -117,7 +118,7 @@ def main(args, **kwargs):
 
     env_agent = VecFrameStack(env_agent, n_stack=4)
     env_agent = VecTransposeImage(env_agent)
-    env_agent = CALFWrapper(
+    env_agent = CALFWrapper_CustomizedRelaxProb(
                 env_agent,
                 relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
                 fallback_policy=CALF_PPOPendulumWrapper(
@@ -186,11 +187,12 @@ def main(args, **kwargs):
         info_dict["calf_activated_count"].append(env_agent.calf_activated_count)
         info_dict["accumulated_reward"].append(accumulated_reward.copy())
         model.logger.dump(step_i)
-
-        # ax.imshow(obs[0][-3:].transpose((1, 2, 0)).copy())
-        # ax.axis("off")
-        # plt.pause(1/30)
-        # time.sleep(1/30)
+        
+        if not args.console:
+            ax.imshow(obs[0][-3:].transpose((1, 2, 0)).copy())
+            ax.axis("off")
+            plt.pause(1/30)
+            
     # Close the environments
     env_agent.close()
 

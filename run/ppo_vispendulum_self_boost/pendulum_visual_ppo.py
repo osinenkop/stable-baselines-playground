@@ -52,6 +52,8 @@ ppo_hyperparams = {
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
     "clip_range": 0.01,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
+    "use_sde": True,
+    "sde_sample_freq": 16,
 }
 
 # Global variables for graceful termination
@@ -136,9 +138,9 @@ def main(args, **kwargs):
             gamma=ppo_hyperparams["gamma"],
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
+            use_sde=ppo_hyperparams["use_sde"],
+            sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
             verbose=1,
-            use_sde=True,
-            sde_sample_freq=16,
         )
         
         if kwargs.get("use_mlflow"):    
@@ -149,7 +151,7 @@ def main(args, **kwargs):
         # Set up a checkpoint callback to save the model every 'save_freq' steps
         checkpoint_callback = CheckpointCallback(
             save_freq=save_model_every_steps,  # Save the model periodically
-            save_path="./checkpoints",  # Directory to save the model
+            save_path="./artifacts/checkpoints",  # Directory to save the model
             name_prefix="ppo_visual_pendulum"
         )
 
@@ -181,7 +183,7 @@ def main(args, **kwargs):
         finally:
             print("Training completed or interrupted.")
 
-        model.save("ppo_visual_pendulum")
+        model.save("./artifacts/checkpoints/ppo_visual_pendulum")
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
@@ -195,9 +197,9 @@ def main(args, **kwargs):
         if args.eval_checkpoint:
             model = PPO.load(args.eval_checkpoint)
         elif args.loadstep:
-            model = PPO.load(f"checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
+            model = PPO.load(f"./artifacts/checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
         else:
-            model = PPO.load("ppo_visual_pendulum")
+            model = PPO.load("./artifacts/checkpoints/ppo_visual_pendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
