@@ -7,15 +7,15 @@ from copy import copy
 
 
 class RelaxProb:
-    def __init__(self, initial_value, total_steps):
+    def __init__(self, initial_value: float, total_steps: int):
         """
         Initializes the RelaxProb class.
 
         NOTE: At this moment, the RelaxProb only supports the decay of relax_prob over time_step. It is not aware of the change to a new episode.
 
         Parameters:
-        initial_value (float): The initial value of relax_prob.
-        total_steps (int): The total number of time steps over which relax_prob will reduce to 0.
+            initial_value: The initial value of relax_prob.
+            total_steps: The total number of time steps over which relax_prob will reduce to 0.
         """
         if initial_value < 0 or total_steps <= 0:
             raise ValueError("initial_value must be non-negative and total_steps must be positive.")
@@ -37,12 +37,11 @@ class RelaxProb:
             self.relax_prob = max(0, self.relax_prob - decrement)
             self.current_step += 1
 
-    def get_relax_prob(self):
+    def get_relax_prob(self) -> float:
         """
         Returns the current value of relax_prob.
         
-        Returns:
-        float: The current relax_prob value.
+        Returns: The current relax_prob value.
         """
         return self.relax_prob
 
