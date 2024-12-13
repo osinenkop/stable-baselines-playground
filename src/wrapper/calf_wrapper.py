@@ -116,6 +116,9 @@ class CALFWrapper(Wrapper):
             return self.policy_model.predict_values(
                 self.policy_model.obs_to_tensor(state)[0]
             )
+        
+    def _step(self, action):
+        return self.env.step(action)
 
     def step(self, agent_action):
         current_value = self.get_state_value(self.current_obs)
@@ -141,7 +144,7 @@ class CALFWrapper(Wrapper):
         self.debug and print("[DEBUG]: Line 16")
         self.relax_prob = self.get_relax_prob()
 
-        self.current_obs, reward, terminated, truncated, info = self.env.step(
+        self.current_obs, reward, terminated, truncated, info = self._step(
             action
         )
         self.debug and print("[DEBUG]: Line 5")
@@ -218,3 +221,34 @@ class CALFWrapper_CustomizedRelaxProb(CALFWrapper):
         self.calf_decay_count = 0
 
         self.logger.record("calf/init_relax_prob", self.relax_prob)
+
+    def reset(self, **kwargs):
+        returns = self.env.reset(**kwargs)
+        if len(self.env.reset(**kwargs)) == 2:
+            self.current_obs, info = returns
+        else:
+            self.current_obs = returns
+            print(type(returns))
+            info = None
+
+        self.reset_internal_params()
+        
+        return self.current_obs.copy(), info
+
+    def _step(self, action):
+        returns = self.env.step(
+            action
+        )
+        if len(returns) == 5:
+            obs, reward, terminated, truncated, info = returns
+        else:
+            obs, reward, dones, infos = returns
+            info = infos[0]
+            terminated = False
+            truncated = False
+            for idx, done in enumerate(dones):
+                if done:
+                    terminated = "terminal_observation" in infos[idx]
+                    truncated = infos[idx].get("TimeLimit.truncated", False)
+
+        return obs, reward, terminated, truncated, info
