@@ -22,6 +22,14 @@ Here we trained and used checkpoints as below:
 
 ### Train PPO and Evaluate PPO (Pendulum Environment) with CALF Wrapper
 
+### CALF Wrapper
+CALF Wrapper used for this experiment is modified, due to:
+- using vectorized environments like VecStackFrame and VecTranspose.
+- using under-trained checkpoints
+- needing more CALF activation caused by fired relax probability
+
+`CALFWrapper_CustomizedRelaxProb` use `RelaxProb` whose relax_prob decays linearly and reachs 0 at the end of the evaluation process. 
+
 ### Train visual PPO and Evaluate visual PPO (Pendulum Environment) with CALF Wrapper
 #### Training
 Now ppo trained with nomalized rewards and observation is utilized for this experiment:
@@ -109,6 +117,8 @@ To run mlflow, use this command at the project directory:
 mlflow ui
 ```
 
+The name of each experiment is formed by "<lauch_file_name>_<_subfix_>". Where `subfix`, may stand for the experimental version, needs to be changed in the python scripts.
+
 #### Options
 
 Option | Description |
@@ -126,6 +136,13 @@ Or to run 30 seeds with corresponding initial states, varying initial relax prob
 ```
 source evaluation_visual_loop.sh
 ```
+
+##### Logs
+If `--log` option is enable, the logging files are stored in the "logs" folder. Their names are combined by "<prefix>_<subfix>_seed_{seed_number}.csv".
+Where:
+- prefix: determined inside each launch file.
+- subfix: determined by user using `--eval-name` option.
+- seed_number: a random seed for initial condition.
 
 #### Results
 All the results are calculated using the [Jupyter Notebook](../../analysis/ppo_vispendulum_self_boost/visual_analysis.ipynb) 
