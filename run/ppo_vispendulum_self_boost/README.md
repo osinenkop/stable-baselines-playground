@@ -122,6 +122,14 @@ mlflow ui
 
 The name of each experiment is formed by "<lauch_file_name>_<_subfix_>". Where `subfix`, may stand for the experimental version, needs to be changed in the python scripts.
 
+Main CALF monitoring variables:
+```
+calf/calf_decay_count: The accumulated number of CALF activation by CALF condition satisfaction.
+calf/calf_activated_count: The accumulated number of CALF activation by both CALF condition satisfaction and Relax probability fires.
+calf/last_relax_prob: Changes of Relax probability over time step.
+calf/init_relax_prob: initial value of Relax probability.
+```
+
 #### Options
 
 Option | Description |
