@@ -26,7 +26,7 @@ from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
 
 
-class CALF_PPOPendulumWrapper(CALFNominalWrapper):
+class CALFPPOPendulumWrapper(CALFNominalWrapper):
     """
     This class inherits from CALFWrapper and utilizes a pre-trained PPO checkpoint as the fallback mechanism. 
     During initialization, the class requires the path to a checkpoint of a trained PPO model, 
@@ -126,7 +126,7 @@ def main(args, **kwargs):
     env_agent = CALFWrapper_CustomizedRelaxProb(
                 env_agent,
                 relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
-                fallback_policy=CALF_PPOPendulumWrapper(
+                fallback_policy=CALFPPOPendulumWrapper(
                                     args.fallback_checkpoint,
                                     action_high=env_agent.action_space.high,
                                     action_low=env_agent.action_space.low
