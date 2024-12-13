@@ -27,10 +27,10 @@ During the training, checkpoints are stored by a callback each 1000 steps in to 
 The checkpoints have following formats:
 ```
 # Checkpoints stored each 1000 steps
-./artifact/checkpoints/ppo_pendulum_<step-number>_steps.zip 
+./artifacts/checkpoints/ppo_pendulum_<step-number>_steps.zip 
 
 # The best checkpoint after training
-./artifact/checkpoints/ppo_pendulum.zip 
+./artifacts/checkpoints/ppo_pendulum.zip 
 ```
 
 ##### Configurations
