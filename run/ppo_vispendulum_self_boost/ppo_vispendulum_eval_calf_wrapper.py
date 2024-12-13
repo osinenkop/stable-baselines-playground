@@ -201,9 +201,9 @@ def main(args, **kwargs):
     df = pd.DataFrame(info_dict)
 
     if args.eval_name:
-        file_name = f"visual_ppo_eval_{args.eval_name}_seed_{args.seed}.csv"
+        file_name = f"ppo_vispendulum_eval_calf_{args.eval_name}_seed_{args.seed}.csv"
     else:
-        file_name = f"visual_ppo_eval_{args.loadstep}_seed_{args.seed}.csv"
+        file_name = f"ppo_vispendulum_eval_calf_{args.loadstep}_seed_{args.seed}.csv"
 
     if args.log:
         df.to_csv("logs/" + file_name)

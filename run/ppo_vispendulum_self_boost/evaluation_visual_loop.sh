@@ -4,7 +4,7 @@ for i in $(seq 11 40)
 do
     for relax_prob in ${relax_prob_arr[@]}
     do
-    PYTHONFAULTHANDLER=1 python pendulum_visual_ppo_eval_calf_wrapper.py \
+    PYTHONFAULTHANDLER=1 python ppo_vispendulum_eval_calf_wrapper.py \
         --calf-init-relax $relax_prob \
         --fallback-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_327680_steps.zip" \
         --eval-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_655360_steps.zip" \
@@ -12,12 +12,12 @@ do
         --log --console --seed $i
     done
 
-PYTHONFAULTHANDLER=1 python pendulum_visual_ppo.py --notrain \
+PYTHONFAULTHANDLER=1 python ppo_vispendulum.py --notrain \
     --eval-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_655360_steps.zip" \
     --eval-name "agent_50" \
     --log --console --seed $i
 
-PYTHONFAULTHANDLER=1 python pendulum_visual_ppo.py --notrain \
+PYTHONFAULTHANDLER=1 python ppo_vispendulum.py --notrain \
     --eval-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_327680_steps.zip" \
     --eval-name "agent_25" \
     --log --console --seed $i

@@ -35,7 +35,7 @@ CALF Wrapper used for this experiment is modified, due to:
 Now PPO trained with normalized rewards and observation is utilized for this experiment:
 
 ```bash
-python pendulum_visual_ppo.py --normalize
+python ppo_vispendulum.py --normalize
 ```
 
 ##### Checkpoints
@@ -44,10 +44,10 @@ The checkpoints have the following formats:
 ```
 run/ppo_vispendulum_self_boost/
 # Checkpoints stored each 8192 steps
-./artifacts/checkpoints/ppo_visual_pendulum_<step-number>_steps.zip
+./artifacts/checkpoints/ppo_vispendulum_<step-number>_steps.zip
 
 # The best checkpoint after training
-./artifacts/checkpoints/ppo_visual_pendulum_8192_steps.zip 
+./artifacts/checkpoints/ppo_vispendulum_8192_steps.zip 
 
 # Normalized information 
 ./artifacts/checkpoints/vecnormalize_stats.pkl 
@@ -81,15 +81,15 @@ ppo_hyperparams = {
 #### Evaluation
 > [!IMPORTANT]  
 > Please notice that the evaluation should be run only after the proposed training step completed.
-> The training process uses: `python pendulum_visual_ppo.py --normalize`
+> The training process uses: `python ppo_vispendulum.py --normalize`
 
 NOTICE: `--fallback-checkpoint` and `--eval-checkpoint` have to be defined in this step.
 
 After training, to evaluate a visual PPO agent in the normal pendulum environment:
 
 ```shell
-python pendulum_visual_ppo.py --notrain \
-    --eval-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_655360_steps.zip" \
+python ppo_vispendulum.py --notrain \
+    --eval-checkpoint "./artifacts/checkpoints/ppo_vispendulum_655360_steps.zip" \
     --eval-name "agent_50" \
     --log --console --seed $i
 ```
@@ -97,11 +97,11 @@ python pendulum_visual_ppo.py --notrain \
 Using the same training checkpoint, to evaluate a visual PPO agent on the pendulum environment + CALF Wrapper:
 
 ```shell
-python pendulum_visual_ppo_eval_calf_wrapper.py \
+python ppo_vispendulum_eval_calf_wrapper.py \
     --calf-init-relax 0.5 \
     --calf-decay-rate 0.01 \
-    --fallback-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_327680_steps.zip" \
-    --eval-checkpoint "./artifacts/checkpoints/ppo_visual_pendulum_655360_steps.zip" \
+    --fallback-checkpoint "./artifacts/checkpoints/ppo_vispendulum_327680_steps.zip" \
+    --eval-checkpoint "./artifacts/checkpoints/ppo_vispendulum_655360_steps.zip" \
     --log --console --seed 42
 ```
 

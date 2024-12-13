@@ -152,7 +152,7 @@ def main(args, **kwargs):
         checkpoint_callback = CheckpointCallback(
             save_freq=save_model_every_steps,  # Save the model periodically
             save_path="./artifacts/checkpoints",  # Directory to save the model
-            name_prefix="ppo_visual_pendulum"
+            name_prefix="ppo_vispendulum"
         )
 
         # Instantiate a plotting callback to show the live learning curve
@@ -183,7 +183,7 @@ def main(args, **kwargs):
         finally:
             print("Training completed or interrupted.")
 
-        model.save("./artifacts/checkpoints/ppo_visual_pendulum")
+        model.save("./artifacts/checkpoints/ppo_vispendulum")
 
         # Save the normalization statistics if --normalize is used
         if args.normalize:
@@ -197,9 +197,9 @@ def main(args, **kwargs):
         if args.eval_checkpoint:
             model = PPO.load(args.eval_checkpoint)
         elif args.loadstep:
-            model = PPO.load(f"./artifacts/checkpoints/ppo_visual_pendulum_{args.loadstep}_steps")
+            model = PPO.load(f"./artifacts/checkpoints/ppo_vispendulum_{args.loadstep}_steps")
         else:
-            model = PPO.load("./artifacts/checkpoints/ppo_visual_pendulum")
+            model = PPO.load("./artifacts/checkpoints/ppo_vispendulum")
 
         # Load the normalization statistics if --normalize is used
         if args.normalize:
@@ -270,9 +270,9 @@ def main(args, **kwargs):
 
     df = pd.DataFrame(info_dict)
     if args.eval_name:
-        file_name = f"visual_ppo_eval_{args.eval_name}_seed_{args.seed}.csv"
+        file_name = f"ppo_vispendulum_eval_{args.eval_name}_seed_{args.seed}.csv"
     else:
-        file_name = f"visual_ppo_eval_{args.loadstep}_seed_{args.seed}.csv"
+        file_name = f"ppo_vispendulum_eval_{args.loadstep}_seed_{args.seed}.csv"
 
     if args.log:
         df.to_csv("logs/" + file_name)
