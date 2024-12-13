@@ -66,6 +66,12 @@ class CALFEnergyPendulumWrapper(CALFNominalWrapper):
 
 
 class CALFWrapper(Wrapper):
+    """
+    Description: This CALF wrapper filters actions from the action 
+        and apply a fallback action to the environment by utilizing CALF condition.
+    Note: This environment is used only outside of a normal environment 
+        (not a vectorized environment).
+    """
     def __init__(self, 
                  env, 
                  fallback_policy: CALFNominalWrapper = None, 
@@ -178,7 +184,7 @@ class CALFWrapper(Wrapper):
 
 class CALFWrapper_CustomizedRelaxProb(CALFWrapper):
     """
-    Description: 
+    Note: 
         This wrapper can be used outside of a Vectorized Environment
         and its relax probability would be updated each step using the class RelaxProb
     """
