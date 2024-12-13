@@ -10,7 +10,7 @@ This directory contains the Wrappers implementation of the project. Below is a d
     - **CALF_Wrapper**: This CALF wrapper filter use exponential Relax probability decay
     - **CALFEnergyPendulumWrapper**: A firm layer for CALF fallback to get action from EnergyBasedController
   - Modules used in the experiemnt [`ppo_vispendulum_self_boost`](../../run/ppo_vispendulum_self_boost):
-    - **CALFWrapper_CustomizedRelaxProb**: This CALF wrapper filter use `RelaxProb` decay
+    - **CALFWrapperCustomizedRelaxProb**: This CALF wrapper filter use `RelaxProb` decay
     - **CALFPPOPendulumWrapper**(CALFNominalWrapper): A firm layer for CALF fallback to get action from a checkpoint of PPO (defined in [`Python script`](../../run/ppo_vispendulum_self_boost/ppo_vispendulum_eval_calf_wrapper.py))
     - **RelaxProb**: Support linear decay of Relax Probability
 - [`pendulum_wrapper.py`](./pendulum_wrapper.py) - A customized Environment Wrappers

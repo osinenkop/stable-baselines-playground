@@ -18,7 +18,7 @@ from src.mygym.my_pendulum import PendulumVisual
 
 from src.wrapper.pendulum_wrapper import ResizeObservation
 from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
-from src.wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapper_CustomizedRelaxProb, RelaxProb
+from src.wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapperCustomizedRelaxProb, RelaxProb
 
 from src.utilities.intercept_termination import signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
@@ -123,7 +123,7 @@ def main(args, **kwargs):
 
     env_agent = VecFrameStack(env_agent, n_stack=4)
     env_agent = VecTransposeImage(env_agent)
-    env_agent = CALFWrapper_CustomizedRelaxProb(
+    env_agent = CALFWrapperCustomizedRelaxProb(
                 env_agent,
                 relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
                 fallback_policy=CALFPPOPendulumWrapper(

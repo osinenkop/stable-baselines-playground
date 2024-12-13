@@ -197,7 +197,7 @@ class CALFWrapper(Wrapper):
         return self.current_obs.copy(), info
 
 
-class CALFWrapper_CustomizedRelaxProb(CALFWrapper):
+class CALFWrapperCustomizedRelaxProb(CALFWrapper):
     """
     Note: 
         This wrapper can be used outside of a Vectorized Environment

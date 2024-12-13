@@ -28,7 +28,7 @@ CALF Wrapper used for this experiment is modified, due to:
 - using under-trained checkpoints
 - needing more CALF activation caused by fired relax probability
 
-`CALFWrapper_CustomizedRelaxProb` use `RelaxProb` whose relax_prob decays linearly and reachs 0 at the end of the evaluation process. 
+`CALFWrapperCustomizedRelaxProb` use `RelaxProb` whose relax_prob decays linearly and reachs 0 at the end of the evaluation process. 
 
 ### Train visual PPO and Evaluate visual PPO (Pendulum Environment) with CALF Wrapper
 #### Training
