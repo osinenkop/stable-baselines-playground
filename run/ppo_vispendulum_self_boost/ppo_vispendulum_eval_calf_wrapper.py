@@ -136,7 +136,7 @@ def main(args, **kwargs):
 
     # Load the normalization statistics if --normalsize is used
     if args.normalize:
-        env_agent = VecNormalize.load("vecnormalize_stats.pkl", env_agent)
+        env_agent = VecNormalize.load("./artifacts/checkpoints/vecnormalize_stats.pkl", env_agent)
         env_agent.training = False  # Set to evaluation mode
         env_agent.norm_reward = False  # Disable reward normalization for evaluation
 
