@@ -9,7 +9,8 @@ This directory contains all experiment configurations, training scripts, and eva
   - PPO implementation for visual pendulum control with stacked frames
   
 - [`ppo_vispendulum_self_boost/`](./ppo_vispendulum_self_boost)
-  - TODO: add description
+  - PPO implementation for visual pendulum control with stacked frames
+  - Evaluation with CALFWrapper using its trained checkpoints as an agent and CALF fallback.
 
 - [`ppo_pendulum_calf_wrapper_eval/`](./ppo_pendulum_calf_wrapper_eval)
   - PPO agent on standard pendulum
