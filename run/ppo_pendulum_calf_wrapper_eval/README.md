@@ -122,4 +122,4 @@ All the results are calculated using the [Jupyter Notebook](./analysis/ppo_pendu
 | VanillaPPO_welltrained              |                             1945.61  |                          3.78538e+06 |                             -7545.64 |                             -1020.94  |                                -146.102 |                           -0.0943505 |
 | VanillaPPO_welltrained+CALFWrapper  |                              340.508 |                     115946           |                             -1249.81 |                              -308.321 |                                -134.906 |                           -6.92786   |
 
-![Box plot](../../gfx/boxplot.png)
+![Box plot](../../gfx/boxplot_ppo_calf_eval.png)
