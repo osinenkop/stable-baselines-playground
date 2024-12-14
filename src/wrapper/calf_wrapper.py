@@ -149,12 +149,12 @@ class CALFWrapper(Wrapper):
         if if_calf_constraint_satisfied:
             self.last_good_value = current_value
             self.calf_decay_count += 1
-            self.logger.record("calf/calf_decay_count", self.calf_decay_count)
+            # self.logger.record("calf/calf_decay_count", self.calf_decay_count)
         
         if if_calf_constraint_satisfied or np.random.random() < self.relax_prob:
             action = agent_action
             self.calf_activated_count += 1
-            self.logger.record("calf/calf_activated_count", self.calf_activated_count)
+            # self.logger.record("calf/calf_activated_count", self.calf_activated_count)
             self.debug and print("[DEBUG]: Line 12")
             
         else:
@@ -170,7 +170,7 @@ class CALFWrapper(Wrapper):
         )
         self.debug and print("[DEBUG]: Line 5")
         
-        self.logger.record("calf/last_relax_prob", self.relax_prob)
+        # self.logger.record("calf/last_relax_prob", self.relax_prob)
         if not self.relax_prob_episode_activated:
             self.relax_prob_episode_activated = True
 

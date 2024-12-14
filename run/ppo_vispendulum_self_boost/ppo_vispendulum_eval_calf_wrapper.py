@@ -129,7 +129,8 @@ def main(args, **kwargs):
                 fallback_policy=CALFPPOPendulumWrapper(
                                     args.fallback_checkpoint,
                                     action_high=env_agent.action_space.high,
-                                    action_low=env_agent.action_space.low
+                                    action_low=env_agent.action_space.low,
+                                    device="cpu"
                                     ),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
                 initial_relax_prob=calf_hyperparams["initial_relax_prob"],
@@ -166,7 +167,7 @@ def main(args, **kwargs):
     fig, ax = plt.subplots()
 
     # Run the simulation with the trained agent again run until truncated
-    for step_i in range(1000):
+    for step_i in range(1500):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 

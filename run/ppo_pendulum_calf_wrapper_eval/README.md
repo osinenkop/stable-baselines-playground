@@ -89,7 +89,7 @@ Option | Description |
 | `--log` | Enable logging and printing of simulation data |
 
 #### Evaluation scripts
-To evaluate PPO with and without CALF wrapper (using Pendulum environment), there are 5 evaluation scenario should be run:
+To evaluate PPO with and without CALF wrapper (using Pendulum environment), there are 5 evaluation scenarios:
 - With standard Pedulum environment
   - Welled-trained PPO is evaluated
   - Under-trained PPO is evaluated

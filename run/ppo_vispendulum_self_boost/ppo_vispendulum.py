@@ -238,7 +238,7 @@ def main(args, **kwargs):
     accumulated_reward = 0
 
     # Run the simulation with the trained agent again run until truncated
-    for _ in range(1000):
+    for _ in range(1500):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
