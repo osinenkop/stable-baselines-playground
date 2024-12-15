@@ -77,6 +77,7 @@ def main(args, **kwargs):
         matplotlib.use('Agg')  # Use a non-GUI backend to disable graphical output
     else:
         matplotlib.use("TkAgg")
+        # pass
 
     # Train the model if --notrain flag is not provided
     if not args.notrain:
@@ -238,12 +239,15 @@ def main(args, **kwargs):
     accumulated_reward = 0
 
     # Run the simulation with the trained agent again run until truncated
-    for _ in range(1500):
+    for _ in range(500):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
         # Dynamically handle four or five return values
         result = env_agent.step(action)  # Take a step in the environment
+
+        # env_display.render()
+
         if len(result) == 4:
             obs, reward, done, info = result
             truncated = False

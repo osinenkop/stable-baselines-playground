@@ -167,7 +167,7 @@ def main(args, **kwargs):
     fig, ax = plt.subplots()
 
     # Run the simulation with the trained agent again run until truncated
-    for step_i in range(1500):
+    for step_i in range(1000):
         action, _ = model.predict(obs)
         # action = env_agent.action_space.sample()  # Generate a random action
 
