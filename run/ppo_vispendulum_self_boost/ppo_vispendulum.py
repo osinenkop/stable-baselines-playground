@@ -35,25 +35,23 @@ from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 os.makedirs("logs", exist_ok=True)
 
 # Global parameters
-total_timesteps = 131072 * 10
+total_timesteps = 131072
 episode_timesteps = 1024
 image_height = 64
 image_width = 64
 save_model_every_steps = 8192 / 4
 n_steps = 1024
-parallel_envs = 4
+parallel_envs = 8
 
 # Define the hyperparameters for PPO
 ppo_hyperparams = {
     "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
     "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
     "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gamma": 0.99,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
     "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.01,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "clip_range": 0.2,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
     # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
-    "use_sde": True,
-    "sde_sample_freq": 16,
 }
 
 # Global variables for graceful termination
@@ -139,8 +137,8 @@ def main(args, **kwargs):
             gamma=ppo_hyperparams["gamma"],
             gae_lambda=ppo_hyperparams["gae_lambda"],
             clip_range=ppo_hyperparams["clip_range"],
-            use_sde=ppo_hyperparams["use_sde"],
-            sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
+            # use_sde=ppo_hyperparams["use_sde"],
+            # sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
             verbose=1,
         )
         
