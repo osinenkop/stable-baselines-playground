@@ -131,12 +131,12 @@ def main(args, **kwargs):
             "CnnPolicy",
             env,
             policy_kwargs=policy_kwargs,
-            learning_rate=ppo_hyperparams["learning_rate"],
-            n_steps=ppo_hyperparams["n_steps"],
-            batch_size=ppo_hyperparams["batch_size"],
-            gamma=ppo_hyperparams["gamma"],
-            gae_lambda=ppo_hyperparams["gae_lambda"],
-            clip_range=ppo_hyperparams["clip_range"],
+            learning_rate=args.ppo.learning_rate,
+            n_steps=args.ppo.n_steps,
+            batch_size=args.ppo.batch_size,
+            gamma=args.ppo.gamma,
+            gae_lambda=args.ppo.gae_lambda,
+            clip_range=args.ppo.clip_range,
             verbose=1,
         )
         
