@@ -15,11 +15,27 @@ from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 import pandas as pd
 import os
 
-from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args
+from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args, ExperimentConfig, PPOHyperparameters
 
 
 os.makedirs("logs", exist_ok=True)
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
+
+# Total number of agent-environment interaction steps for training
+total_timesteps = 500000
+
+# global environment (Default setting, can be overwritten by arguments)
+ppo_hyperparams = {
+    "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
+    "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
+    "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
+    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
+    "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
+    "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
+    "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
+    "use_sde": True, # Whether to use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
+    "sde_sample_freq": 4, # Sample a new noise matrix every n steps when using gSDE
+}
 
 # Register the environment
 gym.envs.registration.register(
@@ -34,22 +50,6 @@ def main(args, **kwargs):
     if kwargs.get("use_mlflow"):
         loggers = get_ml_logger(args.debug)
     env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-
-    # Total number of agent-environment interaction steps for training
-    total_timesteps = 500000
-
-    # Define the hyperparameters for PPO
-    ppo_hyperparams = {
-        "learning_rate": 5e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-        "n_steps": 4000,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-        "batch_size": 200,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-        "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
-        "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-        "clip_range": 0.05,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-        "learning_rate": get_linear_fn(5e-4, 1e-6, total_timesteps*2),  # Linear decay from 5e-5 to 1e-6
-        "use_sde": True, # Whether to use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
-        "sde_sample_freq": 4, # Sample a new noise matrix every n steps when using gSDE
-    }
 
     # More detailed explanation:
     #
@@ -69,14 +69,14 @@ def main(args, **kwargs):
         model = PPO(
             "MlpPolicy",
             env,
-            learning_rate=ppo_hyperparams["learning_rate"],
-            n_steps=ppo_hyperparams["n_steps"],
-            batch_size=ppo_hyperparams["batch_size"],
-            gamma=ppo_hyperparams["gamma"],
-            gae_lambda=ppo_hyperparams["gae_lambda"],
-            clip_range=ppo_hyperparams["clip_range"],
-            use_sde=ppo_hyperparams["use_sde"],
-            sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
+            learning_rate=args.ppo.learning_rate,
+            n_steps=args.ppo.n_steps,
+            batch_size=args.ppo.batch_size,
+            gamma=args.ppo.gamma,
+            gae_lambda=args.ppo.gae_lambda,
+            clip_range=args.ppo.clip_range,
+            use_sde=args.ppo.use_sde,
+            sde_sample_freq=args.ppo.sde_sample_freq,
             verbose=1,
         )
         if kwargs.get("use_mlflow"):    
@@ -170,6 +170,18 @@ def main(args, **kwargs):
 
 if __name__ == "__main__":
     # Initialize the argument parser
-    args = parse_args()
+    args = parse_args(ExperimentConfig, 
+                overide_default=ExperimentConfig(
+                    ppo=PPOHyperparameters(
+                        learning_rate=ppo_hyperparams["learning_rate"],
+                        n_steps=ppo_hyperparams["n_steps"],
+                        batch_size=ppo_hyperparams["batch_size"],
+                        gamma=ppo_hyperparams["gamma"],
+                        gae_lambda=ppo_hyperparams["gae_lambda"],
+                        clip_range=ppo_hyperparams["clip_range"],
+                        use_sde=ppo_hyperparams["use_sde"],
+                        sde_sample_freq=ppo_hyperparams["sde_sample_freq"],
+                    )
+                ))
 
     main(args)

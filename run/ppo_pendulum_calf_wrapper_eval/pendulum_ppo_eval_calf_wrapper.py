@@ -16,7 +16,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import pandas as pd
 import os
 
-from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args
+from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args, CALFEvalExperimentConfig, PPOHyperparameters
 
 
 os.makedirs("logs", exist_ok=True)
@@ -29,6 +29,13 @@ gym.envs.registration.register(
     entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
+# global environment (Default setting, can be overwritten by arguments)
+calf_hyperparams = {
+    "calf_decay_rate": 0.01,
+    "initial_relax_prob": 0.5,
+    "relax_prob_base_step_factor": .95,
+    "relax_prob_episode_factor": 0.
+}
 
 @mlflow_monotoring()
 def main(args, **kwargs):
@@ -37,13 +44,6 @@ def main(args, **kwargs):
     if kwargs.get("use_mlflow"):
         loggers = get_ml_logger(args.debug)
     env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-
-    calf_hyperparams = {
-        "calf_decay_rate": 0.01,
-        "initial_relax_prob": 0.5,
-        "relax_prob_base_step_factor": .95,
-        "relax_prob_episode_factor": 0.
-    }
 
     # ====Evaluation: animated plot to show trained agent's performance
     
@@ -55,10 +55,10 @@ def main(args, **kwargs):
             env = CALFWrapper(
                 env,
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
-                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
-                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
-                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                calf_decay_rate=args.calf_decay_rate,
+                initial_relax_prob=args.calf_init_relax,
+                relax_prob_base_step_factor=args.relax_prob_base_step_factor,
+                relax_prob_episode_factor=args.relax_prob_episode_factor,
                 debug=False,
                 logger=loggers
             )
@@ -134,5 +134,12 @@ def main(args, **kwargs):
     print(df.tail(2))
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = parse_args(CALFEvalExperimentConfig, 
+                    overide_default=CALFEvalExperimentConfig(
+                        calf_init_relax=calf_hyperparams["initial_relax_prob"],
+                        calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                        relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                        relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                        ppo=PPOHyperparameters()
+                    ))
     main(args)
