@@ -13,7 +13,7 @@ This directory contains all experiment configurations, training scripts, and eva
   - Evaluation with CALFWrapper using its trained checkpoints as an agent and CALF fallback.
   - Main related modules:
     - src.wrapper.calf_wrapper.**CALFWrapperCustomizedRelaxProb**: This CALF wrapper filter use `RelaxProb` decay
-    - **CALFPPOPendulumWrapper**(CALFNominalWrapper): A firm layer for CALF fallback to get action from a checkpoint of PPO (defined in [`Python script`](../../run/ppo_vispendulum_self_boost/ppo_vispendulum_eval_calf_wrapper.py))
+    - src.wrapper.calf_fallback_wrapper.**CALFPPOPendulumWrapper**(CALFNominalWrapper): A firm layer for CALF fallback to get action from a checkpoint of PPO.
     - src.wrapper.calf_wrapper.**RelaxProb**: Support linear decay of Relax Probability
 
 
@@ -22,7 +22,7 @@ This directory contains all experiment configurations, training scripts, and eva
   - evaluation with CALFWrapper
   - Main CALF related modules:
     - src.wrapper.calf_wrapper.**CALF_Wrapper**: This CALF wrapper filter use exponential Relax probability decay
-    - src.wrapper.calf_wrapper.**CALFEnergyPendulumWrapper**: A firm layer for CALF fallback to get action from EnergyBasedController
+    - src.wrapper.calf_fallback_wrapper.**CALFEnergyPendulumWrapper**: A firm layer for CALF fallback to get action from EnergyBasedController
 
 ## Contributing Guidelines
 ### Creating New Experiments
