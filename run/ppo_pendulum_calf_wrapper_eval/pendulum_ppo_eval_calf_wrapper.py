@@ -7,7 +7,8 @@ from stable_baselines3 import PPO
 from gymnasium.wrappers import TimeLimit
 from src.mygym.my_pendulum import PendulumRenderFix
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
-from src.wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
+from src.wrapper.calf_wrapper import CALFWrapper
+from src.wrapper.calf_fallback_wrapper import CALFEnergyPendulumWrapper
 from src.controller.energybased import EnergyBasedController
 
 from stable_baselines3.common.vec_env import DummyVecEnv

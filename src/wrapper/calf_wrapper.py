@@ -63,23 +63,6 @@ class CALFNominalWrapper():
         return action 
 
 
-class CALFEnergyPendulumWrapper(CALFNominalWrapper):
-    """
-    This class inherits from CALFWrapper and integrates with the EnergyBasedController. 
-    It is designed to operate with EnergyBasedController as the primary fallback mechanism within the CALFWrapper structure. 
-    Upon initialization, an instance of the EnergyBasedController must be provided, ensuring seamless energy-based fallback functionality and robust handling of controller logic.
-    """
-    def compute_action(self, observation):
-        cos_angle, sin_angle, angular_velocity = observation
-        angle = np.arctan2(sin_angle, cos_angle)
-
-        control_action = self.controller.compute(angle, cos_angle, angular_velocity)
-        
-        # Clip the action to the valid range for the Pendulum environment
-        return np.clip([control_action], -2.0, 2.0)
-        # return control_action
-
-
 class CALFWrapper(Wrapper):
     """
     Description: This CALF wrapper filters actions from the action 

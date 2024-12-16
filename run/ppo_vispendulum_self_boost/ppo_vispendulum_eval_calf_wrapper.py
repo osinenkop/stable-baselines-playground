@@ -9,7 +9,6 @@ import pandas as pd
 import os
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.vec_env import VecNormalize
@@ -18,34 +17,12 @@ from src.mygym.my_pendulum import PendulumVisual
 
 from src.wrapper.pendulum_wrapper import ResizeObservation
 from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
-from src.wrapper.calf_wrapper import CALFNominalWrapper, CALFWrapperCustomizedRelaxProb, RelaxProb
+from src.wrapper.calf_wrapper import CALFWrapperCustomizedRelaxProb, RelaxProb
+from src.wrapper.calf_fallback_wrapper import CALFPPOPendulumWrapper
 
 from src.utilities.intercept_termination import signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-
-
-
-class CALFPPOPendulumWrapper(CALFNominalWrapper):
-    """
-    This class inherits from CALFWrapper and utilizes a pre-trained PPO checkpoint as the fallback mechanism. 
-    During initialization, the class requires the path to a checkpoint of a trained PPO model, 
-    which it integrates as a fallback within the CALFWrapper structure. 
-    """
-    def __init__(self, checkpoint_path, action_low, action_high, device="cuda"):
-        self.model = PPO.load(checkpoint_path)
-        self.device = device
-        self.action_space_low = action_low
-        self.action_space_high = action_high
-    
-    def compute_action(self, observation):
-        with torch.no_grad():
-            # Convert to pytorch tensor or to TensorDict
-            obs_tensor = obs_as_tensor(observation, self.device)
-            actions, _, _ = self.model.policy(obs_tensor)
-            actions = actions.cpu().numpy()
-
-        return np.clip(actions, self.action_space_low, self.action_space_high)
 
 os.makedirs("logs", exist_ok=True)
 
