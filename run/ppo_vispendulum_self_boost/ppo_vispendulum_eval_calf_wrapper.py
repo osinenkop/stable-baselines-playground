@@ -29,9 +29,14 @@ from run.ppo_vispendulum_self_boost.args_parser import parse_args, CALFEvalExper
 os.makedirs("logs", exist_ok=True)
 
 # Global parameters
+image_height = 64
+image_width = 64
+
 calf_hyperparams = {
     "calf_decay_rate": 0.01,
-    "initial_relax_prob": 0.5
+    "initial_relax_prob": 0.5,
+    "relax_prob_base_step_factor": 0, # Unused inside wrapper
+    "relax_prob_episode_factor": 0, # Unused inside wrapper
 }
 
 # Global variables for graceful termination
@@ -85,7 +90,7 @@ def main(args, **kwargs):
                 env_agent,
                 relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
                 fallback_policy=CALFPPOPendulumWrapper(
-                                    args.fallback_checkpoint,
+                                    args.calf_fallback_checkpoint,
                                     action_high=env_agent.action_space.high,
                                     action_low=env_agent.action_space.low
                                     ),
