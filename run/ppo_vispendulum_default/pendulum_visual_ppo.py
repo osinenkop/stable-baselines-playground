@@ -202,8 +202,9 @@ def main():
     env_display = PendulumVisual(render_mode="human")
 
     # Reset the environments
+    env_agent.seed(seed=args.seed)
     obs = env_agent.reset()
-    env_display.reset()
+    env_display.reset(seed=args.seed)
 
     # Run the simulation with the trained agent
     for _ in range(3000):
