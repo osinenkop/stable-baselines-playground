@@ -8,6 +8,28 @@ from copy import copy
 
 class RelaxProb:
     """
+    A generic class used for Relax Probability decay 
+    """
+    def __init__(self):
+        self.relax_prob = ...
+
+    def reset(self):
+        ...
+
+    def step(self):
+        ...
+
+    def get_relax_prob(self) -> float:
+        """
+        Returns the current value of relax_prob.
+        
+        Returns: The current relax_prob value.
+        """
+        return self.relax_prob
+
+
+class RelaxProbLinear(RelaxProb):
+    """
     The RelaxProb class manages the relaxation probability with a mechanism for linearly decaying it 
     over a specified number of time steps. This is particularly useful in scenarios 
     where a gradual reduction in relaxation probability is required, 
@@ -27,12 +49,12 @@ class RelaxProb:
             raise ValueError("initial_value must be non-negative and total_steps must be positive.")
 
         self.total_steps = total_steps
-        self.reset(initial_value)
-
-    def reset(self, initial_value):
         self.initial_value = initial_value
+        self.reset()
+
+    def reset(self):
         self.current_step = 0
-        self.relax_prob = initial_value
+        self.relax_prob = self.initial_value
 
     def step(self):
         """
@@ -43,13 +65,56 @@ class RelaxProb:
             self.relax_prob = max(0, self.relax_prob - decrement)
             self.current_step += 1
 
-    def get_relax_prob(self) -> float:
+    
+class RelaxProbExponetial(RelaxProb):
+    """
+    The RelaxProb class manages the relaxation probability with a mechanism for exponential decaying it 
+    over a specified number of time steps. This is particularly useful in scenarios 
+    where a significant reduction in relaxation probability at earlier steps is required, 
+    such as in reinforcement learning or optimization algorithms. 
+    """
+    def __init__(self, 
+                 initial_relax_prob: float, 
+                 relax_prob_base_step_factor: float,
+                 relax_prob_episode_factor: float):
         """
-        Returns the current value of relax_prob.
-        
-        Returns: The current relax_prob value.
+        Initializes the RelaxProb class.
+
+        Parameters:
+            initial_relax_prob: The initial value of relax_prob.
+            relax_prob_base_step_factor: Relax prob at the 1st episode and 1st step
+            relax_prob_episode_factor: Factor to update relax_prob_step_factor at the end of each episode
         """
-        return self.relax_prob
+        if initial_relax_prob < 0:
+            raise ValueError("initial_relax_prob must be non-negative.")
+
+        # Relax prob at the 1st episode and 1st step
+        self.relax_prob_step_factor = relax_prob_base_step_factor
+
+        # Factor to update relax_prob_step_factor at the end of each episode
+        self.relax_prob_episode_factor = relax_prob_episode_factor
+
+        # increase after each episode (episode to episode)
+        self.initial_relax_prob = initial_relax_prob
+        self.relax_prob = initial_relax_prob
+        self.current_step = 0
+
+    def reset(self):
+        if self.current_step != 0:
+            self.initial_relax_prob = np.clip(
+                self.initial_relax_prob + self.initial_relax_prob * self.relax_prob_episode_factor,
+                0, 1)
+            
+        self.relax_prob = self.initial_relax_prob
+        self.current_step = 0
+
+    def step(self):
+        """
+        Reduces the relax_prob value linearly for each time step until it reaches 0.
+        """
+        self.relax_prob = max(0, self.relax_prob * self.relax_prob_step_factor)
+        self.current_step += 1
+
 
 class CALFNominalWrapper():
     """
@@ -72,11 +137,9 @@ class CALFWrapper(Wrapper):
     """
     def __init__(self, 
                  env, 
+                 relax_decay: RelaxProb,
                  fallback_policy: CALFNominalWrapper = None, 
                  calf_decay_rate: float = 0.0005,
-                 initial_relax_prob: float = 0.5,
-                 relax_prob_base_step_factor: float = 0.9,
-                 relax_prob_episode_factor: float = 0.1,
                  **kwargs):
         super().__init__(env)
         self.last_good_value = None
@@ -84,24 +147,13 @@ class CALFWrapper(Wrapper):
         self.fallback_policy = fallback_policy
         self.calf_activated_count = 0
         self.calf_decay_count = 0
+        self.calf_relax_prob_fires_count = 0
         self.calf_decay_rate = calf_decay_rate
 
-        # Relax prob at the 1st episode and 1st step
-        self.relax_prob_base_step_factor = relax_prob_base_step_factor
-
-        # Factor to update relax_prob_step_factor at the end of each episode
-        self.relax_prob_episode_factor = relax_prob_episode_factor
-
-        # Intiated with base_step_factor
-        # and increase after each episode (episode to episode)
-        self.relax_prob_step_factor = relax_prob_base_step_factor
-
         # Actual relax prob
-        self.initial_relax_prob = initial_relax_prob
-        self.relax_prob = self.initial_relax_prob
-
-        # Only activate after 1st episode
-        self.relax_prob_episode_activated = False
+        self.relax_decay = relax_decay
+        self.relax_decay.reset()
+        self.relax_prob = self.relax_decay.get_relax_prob()
 
         self.logger = kwargs.get("logger", configure())
         self.debug = kwargs.get("debug", False)
@@ -112,8 +164,8 @@ class CALFWrapper(Wrapper):
         self.policy_model = copy(policy_model)
 
     def get_relax_prob(self):
-        return np.clip(self.relax_prob * self.relax_prob_step_factor,
-                                        0, 1)        
+        self.relax_decay.step()
+        return self.relax_decay.get_relax_prob()
 
     def get_state_value(self, state):
         with th.no_grad():
@@ -134,7 +186,13 @@ class CALFWrapper(Wrapper):
             self.calf_decay_count += 1
             self.logger.record("calf/calf_decay_count", self.calf_decay_count)
         
-        if if_calf_constraint_satisfied or np.random.random() < self.relax_prob:
+        if_relax_prob_fires = np.random.random() < self.relax_prob
+
+        if if_relax_prob_fires:
+            self.calf_relax_prob_fires_count += 1
+            self.logger.record("calf/calf_relax_prob_fires_count", self.calf_decay_count)
+
+        if if_calf_constraint_satisfied or if_relax_prob_fires:
             action = agent_action
             self.calf_activated_count += 1
             self.logger.record("calf/calf_activated_count", self.calf_activated_count)
@@ -154,22 +212,18 @@ class CALFWrapper(Wrapper):
         self.debug and print("[DEBUG]: Line 5")
         
         self.logger.record("calf/last_relax_prob", self.relax_prob)
-        if not self.relax_prob_episode_activated:
-            self.relax_prob_episode_activated = True
 
         return self.current_obs.copy(), float(reward), terminated, truncated, info
     
     def reset_internal_params(self):
-        if self.relax_prob_episode_activated:
-            self.relax_prob_step_factor = self.relax_prob_base_step_factor
-            self.initial_relax_prob = np.clip(
-                self.initial_relax_prob + self.initial_relax_prob * self.relax_prob_episode_factor,
-                0, 1)
-            self.relax_prob = self.initial_relax_prob
+        # Reset Relax decay mechanism
+        self.relax_decay.reset()
+        self.relax_prob = self.relax_decay.get_relax_prob()
 
         self.last_good_value = self.get_state_value(self.current_obs)
         self.calf_activated_count = 0
         self.calf_decay_count = 0
+        self.calf_relax_prob_fires_count = 0
 
         self.logger.record("calf/init_relax_prob", self.relax_prob)
 
@@ -180,56 +234,12 @@ class CALFWrapper(Wrapper):
         return self.current_obs.copy(), info
 
 
-class CALFWrapperCustomizedRelaxProb(CALFWrapper):
+class CALFWrapperSingleVecEnv(CALFWrapper):
     """
     Note: 
         This wrapper can be used outside of a Vectorized Environment
         and its relax probability would be updated each step using the class RelaxProb
     """
-    def __init__(self, 
-                 env, 
-                 relax_decay: RelaxProb,
-                 fallback_policy: CALFNominalWrapper = None, 
-                 calf_decay_rate: float = 0.0005,
-                 initial_relax_prob: float = 0.5,
-                 relax_prob_base_step_factor: float = 0.9,
-                 relax_prob_episode_factor: float = 0.1,
-                 **kwargs):
-        super().__init__( 
-                 env, 
-                 fallback_policy=fallback_policy,
-                 calf_decay_rate=calf_decay_rate,
-                 initial_relax_prob=initial_relax_prob,
-                 relax_prob_base_step_factor=relax_prob_base_step_factor,
-                 relax_prob_episode_factor=relax_prob_episode_factor,
-                 **kwargs)
-
-
-        # Actual relax prob
-        self.relax_decay = relax_decay
-        self.relax_decay.reset(self.initial_relax_prob)
-        self.relax_prob = self.relax_decay.get_relax_prob()
-
-    def get_relax_prob(self):
-        self.relax_decay.step()
-        return self.relax_decay.get_relax_prob()
-    
-    def reset_internal_params(self):
-        if self.relax_prob_episode_activated:
-            self.relax_prob_step_factor = self.relax_prob_base_step_factor
-            self.initial_relax_prob = np.clip(
-                self.initial_relax_prob + self.initial_relax_prob * self.relax_prob_episode_factor,
-                0, 1)
-            
-            # Reset Relax decay mechanism
-            self.relax_decay.reset(self.initial_relax_prob)
-            self.relax_prob = self.relax_decay.get_relax_prob()
-
-        self.last_good_value = self.get_state_value(self.current_obs)
-        self.calf_activated_count = 0
-        self.calf_decay_count = 0
-
-        self.logger.record("calf/init_relax_prob", self.relax_prob)
 
     def reset(self, **kwargs):
         returns = self.env.reset(**kwargs)
@@ -261,3 +271,14 @@ class CALFWrapperCustomizedRelaxProb(CALFWrapper):
                     truncated = infos[idx].get("TimeLimit.truncated", False)
 
         return obs, reward, terminated, truncated, info
+
+    def step(self, agent_action):
+        results = super().step(agent_action)
+
+        # Only for logging
+        current_value = self.get_state_value(self.current_obs)
+        self.logger.record("calf/state_value", current_value[0][0].cpu().numpy())
+        self.logger.record("calf/CALF_value", self.last_good_value[0][0].cpu().numpy())
+        
+        return results
+        

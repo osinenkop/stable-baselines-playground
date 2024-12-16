@@ -37,6 +37,7 @@ class MLflowOutputFormat(KVWriter):
 def get_ml_logger(debug=False):
     output_formats = [MLflowOutputFormat()]
     if debug:
+        print("Debug is on")
         output_formats += [HumanOutputFormat(sys.stdout)]
 
     loggers = Logger(

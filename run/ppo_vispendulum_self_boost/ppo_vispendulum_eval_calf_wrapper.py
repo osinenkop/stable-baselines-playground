@@ -17,7 +17,7 @@ from src.mygym.my_pendulum import PendulumVisual
 
 from src.wrapper.pendulum_wrapper import ResizeObservation
 from src.wrapper.pendulum_wrapper import AddTruncatedFlagWrapper
-from src.wrapper.calf_wrapper import CALFWrapperCustomizedRelaxProb, RelaxProb
+from src.wrapper.calf_wrapper import CALFWrapperSingleVecEnv, RelaxProbLinear
 from src.wrapper.calf_fallback_wrapper import CALFPPOPendulumWrapper
 
 from src.utilities.intercept_termination import signal_handler
@@ -32,6 +32,7 @@ os.makedirs("logs", exist_ok=True)
 image_height = 64
 image_width = 64
 
+# Default setting, can be overwritten by arguments
 calf_hyperparams = {
     "calf_decay_rate": 0.01,
     "initial_relax_prob": 0.5,
@@ -86,18 +87,17 @@ def main(args, **kwargs):
 
     env_agent = VecFrameStack(env_agent, n_stack=4)
     env_agent = VecTransposeImage(env_agent)
-    env_agent = CALFWrapperCustomizedRelaxProb(
+    env_agent = CALFWrapperSingleVecEnv(
                 env_agent,
-                relax_decay=RelaxProb(calf_hyperparams["initial_relax_prob"], total_steps=1000),
+                relax_decay=RelaxProbLinear(
+                    calf_hyperparams["initial_relax_prob"], 
+                    total_steps=1000),
                 fallback_policy=CALFPPOPendulumWrapper(
                                     args.calf_fallback_checkpoint,
                                     action_high=env_agent.action_space.high,
                                     action_low=env_agent.action_space.low
                                     ),
                 calf_decay_rate=calf_hyperparams["calf_decay_rate"],
-                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
-                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
                 debug=False,
                 logger=loggers
             )

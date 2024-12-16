@@ -7,7 +7,7 @@ from stable_baselines3 import PPO
 from gymnasium.wrappers import TimeLimit
 from src.mygym.my_pendulum import PendulumRenderFix
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
-from src.wrapper.calf_wrapper import CALFWrapper
+from src.wrapper.calf_wrapper import CALFWrapper, RelaxProbExponetial
 from src.wrapper.calf_fallback_wrapper import CALFEnergyPendulumWrapper
 from src.controller.energybased import EnergyBasedController
 
@@ -52,13 +52,25 @@ def main(args, **kwargs):
             env = PendulumRenderFix(render_mode="human" if not args.console else None)
             # env = PendulumRenderFix()
             # env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+            # env = CALFWrapper(
+            #     env,
+            #     fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+            #     calf_decay_rate=args.calf_decay_rate,
+            #     initial_relax_prob=args.calf_init_relax,
+            #     relax_prob_base_step_factor=args.relax_prob_base_step_factor,
+            #     relax_prob_episode_factor=args.relax_prob_episode_factor,
+            #     debug=False,
+            #     logger=loggers
+            # )
             env = CALFWrapper(
                 env,
-                fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+                relax_decay=RelaxProbExponetial(
+                    initial_relax_prob=args.calf_init_relax,
+                    relax_prob_base_step_factor=args.relax_prob_base_step_factor,
+                    relax_prob_episode_factor=args.relax_prob_episode_factor,
+                ),
                 calf_decay_rate=args.calf_decay_rate,
-                initial_relax_prob=args.calf_init_relax,
-                relax_prob_base_step_factor=args.relax_prob_base_step_factor,
-                relax_prob_episode_factor=args.relax_prob_episode_factor,
+                fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
                 debug=False,
                 logger=loggers
             )
