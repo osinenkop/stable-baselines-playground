@@ -12,9 +12,9 @@ This directory contains all experiment configurations, training scripts, and eva
   - PPO implementation for visual pendulum control with stacked frames
   - Evaluation with CALFWrapper using its trained checkpoints as an agent and CALF fallback.
   - Main related modules:
-    - src.wrapper.calf_wrapper.**CALFWrapperCustomizedRelaxProb**: This CALF wrapper filter use `RelaxProb` decay
+    - src.wrapper.calf_wrapper.**CALFWrapperSingleVecEnv**: This CALF wrapper filter, which use `RelaxProbLinear` decay, is put on the top of a Vectorized Environment.
     - src.wrapper.calf_fallback_wrapper.**CALFPPOPendulumWrapper**(CALFNominalWrapper): A firm layer for CALF fallback to get action from a checkpoint of PPO.
-    - src.wrapper.calf_wrapper.**RelaxProb**: Support linear decay of Relax Probability
+    - src.wrapper.calf_wrapper.**RelaxProbLinear**: Support linear decay of Relax Probability
 
 
 - [`ppo_pendulum_calf_wrapper_eval/`](./ppo_pendulum_calf_wrapper_eval)

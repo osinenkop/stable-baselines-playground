@@ -28,7 +28,7 @@ CALF Wrapper used for this experiment is modified, due to:
 - using under-trained checkpoints
 - needing more CALF activation caused by fired relax probability
 
-`CALFWrapperCustomizedRelaxProb` use `RelaxProb` whose relax_prob decays linearly and reachs 0 at the end of the evaluation process. 
+`CALFWrapperSingleVecEnv` use `RelaxProbLinear` whose relax_prob decays linearly and reachs 0 at the end of the evaluation process. 
 
 ### Train visual PPO and Evaluate visual PPO (Pendulum Environment) with CALF Wrapper
 #### Training
@@ -81,7 +81,8 @@ ppo_hyperparams = {
 #### Evaluation
 > [!IMPORTANT]  
 > Please notice that the evaluation should be run only after the proposed training step completed.
-> The training process uses: `python ppo_vispendulum.py --normalize`
+> `--nomalize` option is set by **True** as default.
+> The training process uses: `python ppo_vispendulum.py`
 
 NOTICE: `--fallback-checkpoint` and `--eval-checkpoint` have to be defined in this step.
 
@@ -102,7 +103,7 @@ python ppo_vispendulum_eval_calf_wrapper.py \
     --calf-decay-rate 0.01 \
     --fallback-checkpoint "./artifacts/checkpoints/ppo_vispendulum_327680_steps.zip" \
     --eval-checkpoint "./artifacts/checkpoints/ppo_vispendulum_655360_steps.zip" \
-    --log --console --seed 42
+    --log --seed 42
 ```
 
 The following CALF configuration was used as default:
@@ -114,7 +115,6 @@ calf_hyperparams = {
 ```
 
 And CALF relax probability **linearly decays** over time steps.
-
 
 #### Monitoring
 
@@ -147,8 +147,26 @@ Option | Description |
 | `--eval-checkpoint` | Choose checkpoint to load for base agent in evaluation |
 | `--eval-name` | Choose the experimental logging name which will be stored in the "logs| folder |
 
-Or to run 30 seeds with corresponding initial states, varying initial relax probabilities:
+#### Evaluation scripts
+To evaluate PPO with and without CALF wrapper (using Pendulum environment), there are 3 evaluation scenario should be run:
+- With standard Pedulum environment
+  - Evaluate the first quartile checkpoint of PPO
+  - Evaluate the second quartile checkpoint of PPO
+  
+- With standard Pedulum environment + CALF Wrapper
+  - The second quartile checkpoint of PPO is the base agent, the first quartile checkpoint of PPO is as CALF fallback
+
+To be specific, we use the checkpoint at:
+- 500000th step as the well-trained checkpoint
+- 200000th step as the under-trained checkpoint
+  
+To evaluate above scenario, run this command:
+```shell
+source evaluation_visual.sh
 ```
+Or to evaluate with 30 seeds and Initial Relax Probability in (0.9 0.5 0.25) for each case with corresponding initial states,
+run this command:
+```shell
 source evaluation_visual_loop.sh
 ```
 
