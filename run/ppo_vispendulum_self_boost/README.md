@@ -50,13 +50,13 @@ python ppo_vispendulum.py
 
 ##### Training Checkpoints
 
-- Checkpoints saved every 8192 steps:
+- Checkpoints saved every 16384 steps:
 ```
 ./artifacts/checkpoints/ppo_vispendulum_<step-number>_steps.zip
 ```
 - Best checkpoint saved at:
 ```
-./artifacts/checkpoints/ppo_vispendulum_8192_steps.zip 
+./artifacts/checkpoints/ppo_vispendulum_16384_steps.zip 
 ```
 - Normalized information 
 ```
@@ -124,6 +124,57 @@ calf_hyperparams = {
 }
 ```
 
+#### Evaluation scripts
+Run all evaluations automatically:
+```shell
+source evaluation_visual.sh
+```
+Run with additional seeds and configurations:
+```shell
+source evaluation_visual_loop.sh
+```
+
+##### Logs
+If `--log` option is enabled, the logging files are stored in the "logs" folder. Their names are combined by "\<prefix>_\<subfix>_seed\_{seed_number}.csv".
+Where:
+- prefix: determined inside each launch file.
+- subfix: determined by users using `--eval-name` option.
+- seed_number: a random seed for the initial condition.
+
+#### Options
+
+**General Options**
+
+| Option                                      | Description                                                                                                  | Default Value |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------|---------------|
+| `-h`, `--help`                              | Show this help message and exit.                                                                             |               |
+| `--notrain`, `--no-notrain`                 | Skip training and only run evaluation.                                                                       | False         |
+| `--console`, `--no-console`                 | Disable graphical output for console-only mode.                                                              | False         |
+| `--normalize`, `--no-normalize`             | Enable observation and reward normalization.                                                                 | True          |
+| `--eval-normalize`, `--no-eval-normalize`   | Enable observation and reward normalization for evaluation.                                                  | False         |
+| `--single-thread`, `--no-single-thread`     | Use `DummyVecEnv` for single-threaded environment.                                                           | False         |
+| `--loadstep None or INT`                     | Choose checkpoint step to load for PPO agent. If `eval_checkpoint` and `loadstep` are None, the best checkpoint will be loaded.                                                                            | None          |
+| `--log`, `--no-log`                         | Enable logging of simulation data.                                                                           | False         |
+| `--debug`, `--no-debug`                     | Enable printing of simulation data.                                                                          | False         |
+| `--seed INT`                                | Choose random seed for environmental initial state.                                                          | 42            |
+| `--eval-checkpoint None or STR`              | Choose checkpoint to load for PPO agent. If `eval_checkpoint` and `loadstep` are None, the best checkpoint will be loaded.            | None          |
+| `--eval-name STR`                           | Choose experimental name for logging.                                                                        | default       |
+| `--calf-fallback-checkpoint None or STR`     | Choose checkpoint to load for CALF fallback (required).                                                      |               |
+| `--calf-init-relax None or FLOAT`            | Choose initial relax probability.                                                                            | 0.5           |
+| `--calf-decay-rate None or FLOAT`            | Choose CALF decay rate.                                                                                      | 0.01          |
+
+
+**PPO Hyperparameters**
+
+| Hyperparameter               | Description                                                                                                  | Default Value |
+|------------------------------|--------------------------------------------------------------------------------------------------------------|---------------|
+| `--ppo.learning-rate FLOAT`  | Step size used to update the policy network. Lower values can make learning more stable.                     | 0.0004        |
+| `--ppo.n-steps INT`          | Number of steps to collect before performing a policy update. Larger values may lead to more stable updates. | 1024          |
+| `--ppo.batch-size INT`       | Number of samples used in each update. Smaller values can lead to higher variance, larger values stabilize learning. | 512     |
+| `--ppo.gamma FLOAT`          | Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.   | 0.99          |
+| `--ppo.gae-lambda FLOAT`     | Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.       | 0.9           |
+| `--ppo.clip-range FLOAT`     | Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.       | 0.2           |
+
 ### 3. Monitoring
 
 Use MLFlow to monitor the evaluation.
@@ -144,37 +195,7 @@ Variable | Description |
 | `calf/init_relax_prob` | Initial Relax Probability value. |
 
 
-#### Options
-
-Option | Description |
-| ----- |  ----- |
-| `--seed` | Random seed to initialize the initial state of the pendulum |
-| `--console` | Run in console-only mode (no graphical outputs) |
-| `--log` | Enable logging and printing of simulation data |
-| `--calf-init-relax` | Set initial Relax Probability. |
-| `--calf-decay-rate` | Set CALF decay rate. |
-| `--fallback-checkpoint` | Define fallback checkpoint. |
-| `--eval-checkpoint` | Define evaluation checkpoint. |
-| `--eval-name` | Set experiment logging name. |
-
-#### Evaluation scripts
-Run all evaluations automatically:
-```shell
-source evaluation_visual.sh
-```
-Run with additional seeds and configurations:
-```shell
-source evaluation_visual_loop.sh
-```
-
-##### Logs
-If `--log` option is enabled, the logging files are stored in the "logs" folder. Their names are combined by "<prefix>_<subfix>_seed_{seed_number}.csv".
-Where:
-- prefix: determined inside each launch file.
-- subfix: determined by users using `--eval-name` option.
-- seed_number: a random seed for the initial condition.
-
-#### Results
+### 4. Results
 All the results are calculated using the [Jupyter Notebook](../../analysis/ppo_vispendulum_self_boost/visual_analysis.ipynb) 
 
 | Case                                             |   ('last_accumulated_reward', 'std') |   ('last_accumulated_reward', 'var') |   ('last_accumulated_reward', 'min') |   ('last_accumulated_reward', 'mean') |   ('last_accumulated_reward', 'median') |   ('last_accumulated_reward', 'max') |
