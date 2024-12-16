@@ -34,10 +34,14 @@ class MLflowOutputFormat(KVWriter):
                     mlflow.log_metric(key, value, step)
 
 
-def get_ml_logger():
+def get_ml_logger(debug=False):
+    output_formats = [MLflowOutputFormat()]
+    if debug:
+        output_formats += [HumanOutputFormat(sys.stdout)]
+
     loggers = Logger(
         folder=None,
-        output_formats=[HumanOutputFormat(sys.stdout), MLflowOutputFormat()],
+        output_formats=output_formats,
     )
     return loggers
 

@@ -16,6 +16,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import pandas as pd
 import os
 
+from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args
+
 
 os.makedirs("logs", exist_ok=True)
 
@@ -27,43 +29,14 @@ gym.envs.registration.register(
     entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
-def parse_args(configs):
-        # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--notrain", 
-                        action="store_true", 
-                        help="Skip the training phase",
-                        default=True)
-
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint",
-                        default=configs["total_timesteps"])
-
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-
-    return parser.parse_args()
-
 
 @mlflow_monotoring()
-def main(**kwargs):
+def main(args, **kwargs):
     # Use your custom environment for training
     env = gym.make("PendulumRenderFix-v0")
     if kwargs.get("use_mlflow"):
-        loggers = get_ml_logger()
+        loggers = get_ml_logger(args.debug)
     env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-
-    # Total number of agent-environment interaction steps for training
-    total_timesteps = 500000
-
-    args = parse_args(configs={
-        "total_timesteps": total_timesteps
-    })
 
     calf_hyperparams = {
         "calf_decay_rate": 0.01,
@@ -99,10 +72,13 @@ def main(**kwargs):
     env_agent = DummyVecEnv([make_env()])
 
     # Load the model (if needed)
-    model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    if args.loadstep:
+        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    else:
+        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum")
+
     if loggers:
         model.set_logger(loggers)
-
 
     # Reset the environments
     env_agent.env_method("copy_policy_model", model.policy)
@@ -158,4 +134,5 @@ def main(**kwargs):
     print(df.tail(2))
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)

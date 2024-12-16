@@ -15,6 +15,9 @@ from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 import pandas as pd
 import os
 
+from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args
+
+
 os.makedirs("logs", exist_ok=True)
 matplotlib.use("TkAgg")  # Try "Qt5Agg" if "TkAgg" doesn't work
 
@@ -25,11 +28,11 @@ gym.envs.registration.register(
 )
 
 @mlflow_monotoring()
-def main(**kwargs):
+def main(args, **kwargs):
     # Use your custom environment for training
     env = gym.make("PendulumRenderFix-v0")
     if kwargs.get("use_mlflow"):
-        loggers = get_ml_logger()
+        loggers = get_ml_logger(args.debug)
     env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
 
     # Total number of agent-environment interaction steps for training
@@ -47,22 +50,6 @@ def main(**kwargs):
         "use_sde": True, # Whether to use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
         "sde_sample_freq": 4, # Sample a new noise matrix every n steps when using gSDE
     }
-
-
-    # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--notrain", action="store_true", help="Skip the training phase")
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-    # Parse the arguments
-    args = parser.parse_args()
 
     # More detailed explanation:
     #
@@ -182,4 +169,7 @@ def main(**kwargs):
 
 
 if __name__ == "__main__":
-    main()
+    # Initialize the argument parser
+    args = parse_args()
+
+    main(args)

@@ -31,6 +31,8 @@ from src.utilities.clean_cnn_outputs import clean_cnn_outputs
 from src.utilities.intercept_termination import save_model_and_data, signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
+from run.ppo_vispendulum_self_boost.args_parser import parse_args
+
 
 os.makedirs("logs", exist_ok=True)
 
@@ -67,8 +69,7 @@ def main(args, **kwargs):
     signal.signal(signal.SIGTERM, lambda sig, frame: signal_handler(sig, frame))
 
     if kwargs.get("use_mlflow"):
-        loggers = get_ml_logger()
-    
+        loggers = get_ml_logger(args.debug)
     
     # Check if the --console flag is used
     if args.console:
@@ -278,27 +279,6 @@ def main(args, **kwargs):
 
 if __name__ == "__main__":
     # Parse command-line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--notrain", action="store_true", help="Skip training and only run evaluation")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization", 
-                        default=True)
-    parser.add_argument("--eval-normalize", action="store_true", help="Enable observation and reward normalization for evaluation")
-    parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-    parser.add_argument("--eval-checkpoint", 
-                        type=str,
-                        help="Choose step to load checkpoint")
-    parser.add_argument("--eval-name", 
-                        type=str,
-                        help="Choose experimental name for logging")
-    args = parser.parse_args()
+    args = parse_args()
 
     main(args)
