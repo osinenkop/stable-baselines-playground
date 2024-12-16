@@ -23,29 +23,15 @@ from src.wrapper.calf_fallback_wrapper import CALFPPOPendulumWrapper
 from src.utilities.intercept_termination import signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-from run.ppo_vispendulum_self_boost.args_parser import parse_args
+from run.ppo_vispendulum_self_boost.args_parser import parse_args, CALFEvalExperimentConfig, ARG_REQUIRED, PPOHyperparameters
 
 
 os.makedirs("logs", exist_ok=True)
 
 # Global parameters
-total_timesteps = 131072 * 10
-episode_timesteps = 1024
-image_height = 64
-image_width = 64
-save_model_every_steps = 8192 / 4
-n_steps = 1024
-parallel_envs = 4
-
-# Define the hyperparameters for PPO
-ppo_hyperparams = {
-    "learning_rate": 4e-4,  # The step size used to update the policy network. Lower values can make learning more stable.
-    "n_steps": n_steps,  # Number of steps to collect before performing a policy update. Larger values may lead to more stable updates.
-    "batch_size": 512,  # Number of samples used in each update. Smaller values can lead to higher variance, while larger values stabilize learning.
-    "gamma": 0.98,  # Discount factor for future rewards. Closer to 1 means the agent places more emphasis on long-term rewards.
-    "gae_lambda": 0.9,  # Generalized Advantage Estimation (GAE) parameter. Balances bias vs. variance; lower values favor bias.
-    "clip_range": 0.01,  # Clipping range for the PPO objective to prevent large policy updates. Keeps updates more conservative.
-    # "learning_rate": get_linear_fn(1e-4, 0.5e-5, total_timesteps),  # Linear decay from
+calf_hyperparams = {
+    "calf_decay_rate": 0.01,
+    "initial_relax_prob": 0.5
 }
 
 # Global variables for graceful termination
@@ -62,13 +48,6 @@ def main(args, **kwargs):
 
     if kwargs.get("use_mlflow"):
         loggers = get_ml_logger(args.debug)
-
-    calf_hyperparams = {
-        "calf_decay_rate": args.calf_decay_rate,
-        "initial_relax_prob": args.calf_init_relax,
-        "relax_prob_base_step_factor": .95,
-        "relax_prob_episode_factor": 0.
-    }
 
     # Check if the --console flag is used
     if args.console:
@@ -197,6 +176,12 @@ def main(args, **kwargs):
 
 if __name__ == "__main__":
     # Parse command-line arguments
-    args = parse_args()
+    args = parse_args(CALFEvalExperimentConfig, 
+                      overide_default=CALFEvalExperimentConfig(
+                          calf_init_relax=calf_hyperparams["initial_relax_prob"],
+                          calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                          calf_fallback_checkpoint=ARG_REQUIRED,
+                          ppo=PPOHyperparameters()
+                      ))
 
     main(args)

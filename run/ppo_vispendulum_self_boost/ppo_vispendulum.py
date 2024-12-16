@@ -31,7 +31,7 @@ from src.utilities.clean_cnn_outputs import clean_cnn_outputs
 from src.utilities.intercept_termination import save_model_and_data, signal_handler
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
 
-from run.ppo_vispendulum_self_boost.args_parser import parse_args
+from run.ppo_vispendulum_self_boost.args_parser import parse_args, ExperimentConfig, PPOHyperparameters
 
 
 os.makedirs("logs", exist_ok=True)
@@ -279,6 +279,16 @@ def main(args, **kwargs):
 
 if __name__ == "__main__":
     # Parse command-line arguments
-    args = parse_args()
+    args = parse_args(ExperimentConfig, 
+                    overide_default=ExperimentConfig(
+                        ppo=PPOHyperparameters(
+                            learning_rate=ppo_hyperparams["learning_rate"],
+                            n_steps=ppo_hyperparams["n_steps"],
+                            batch_size=ppo_hyperparams["batch_size"],
+                            gamma=ppo_hyperparams["gamma"],
+                            gae_lambda=ppo_hyperparams["gae_lambda"],
+                            clip_range=ppo_hyperparams["clip_range"],
+                        )
+                    ))
 
     main(args)
