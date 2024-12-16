@@ -27,10 +27,10 @@ During the training, checkpoints are stored by a callback each 1000 steps in to 
 The checkpoints have following formats:
 ```
 # Checkpoints stored each 1000 steps
-./artifact/checkpoints/ppo_pendulum_<step-number>_steps.zip 
+./artifacts/checkpoints/ppo_pendulum_<step-number>_steps.zip 
 
 # The best checkpoint after training
-./artifact/checkpoints/ppo_pendulum.zip 
+./artifacts/checkpoints/ppo_pendulum.zip 
 ```
 
 ##### Configurations
@@ -63,7 +63,7 @@ python pendulum_ppo.py --notrain
 Using the same training checkpouint, to evaluate a PPO agent on the pendulum environment + CALF Wrapper:
 
 ```shell
-python pendulum_ppo_load_only.py --notrain
+python pendulum_ppo_eval_calf_wrapper.py --notrain
 ```
 
 The following CALF configuration was used:
@@ -122,4 +122,4 @@ All the results are calculated using the [Jupyter Notebook](./analysis/ppo_pendu
 | VanillaPPO_welltrained              |                             1945.61  |                          3.78538e+06 |                             -7545.64 |                             -1020.94  |                                -146.102 |                           -0.0943505 |
 | VanillaPPO_welltrained+CALFWrapper  |                              340.508 |                     115946           |                             -1249.81 |                              -308.321 |                                -134.906 |                           -6.92786   |
 
-![Box plot](../../gfx/boxplot.png)
+![Box plot](../../gfx/boxplot_ppo_calf_eval.png)

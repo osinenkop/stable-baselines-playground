@@ -7,13 +7,16 @@ from stable_baselines3 import PPO
 from gymnasium.wrappers import TimeLimit
 from src.mygym.my_pendulum import PendulumRenderFix
 from src.utilities.mlflow_logger import mlflow_monotoring, get_ml_logger
-from src.wrapper.calf_wrapper import CALFWrapper, CALFEnergyPendulumWrapper
+from src.wrapper.calf_wrapper import CALFWrapper, RelaxProbExponetial
+from src.wrapper.calf_fallback_wrapper import CALFEnergyPendulumWrapper
 from src.controller.energybased import EnergyBasedController
 
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 import pandas as pd
 import os
+
+from run.ppo_pendulum_calf_wrapper_eval.args_parser import parse_args, CALFEvalExperimentConfig, PPOHyperparameters
 
 
 os.makedirs("logs", exist_ok=True)
@@ -26,50 +29,21 @@ gym.envs.registration.register(
     entry_point="src.mygym.my_pendulum:PendulumRenderFix",
 )
 
-def parse_args(configs):
-        # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="PPO Training and Evaluation for Pendulum")
-    parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
-    parser.add_argument("--log", action="store_true", help="Enable logging and printing of simulation data.")
-    parser.add_argument("--notrain", 
-                        action="store_true", 
-                        help="Skip the training phase",
-                        default=True)
-
-    parser.add_argument("--loadstep", 
-                        type=int,
-                        help="Choose step to load checkpoint",
-                        default=configs["total_timesteps"])
-
-    parser.add_argument("--seed", 
-                        type=int,
-                        help="Choose random seed",
-                        default=42)
-
-    return parser.parse_args()
-
+# global environment (Default setting, can be overwritten by arguments)
+calf_hyperparams = {
+    "calf_decay_rate": 0.01,
+    "initial_relax_prob": 0.5,
+    "relax_prob_base_step_factor": .95,
+    "relax_prob_episode_factor": 0.
+}
 
 @mlflow_monotoring()
-def main(**kwargs):
+def main(args, **kwargs):
     # Use your custom environment for training
     env = gym.make("PendulumRenderFix-v0")
     if kwargs.get("use_mlflow"):
-        loggers = get_ml_logger()
+        loggers = get_ml_logger(args.debug)
     env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
-
-    # Total number of agent-environment interaction steps for training
-    total_timesteps = 500000
-
-    args = parse_args(configs={
-        "total_timesteps": total_timesteps
-    })
-
-    calf_hyperparams = {
-        "calf_decay_rate": 0.01,
-        "initial_relax_prob": 0.5,
-        "relax_prob_base_step_factor": .95,
-        "relax_prob_episode_factor": 0.
-    }
 
     # ====Evaluation: animated plot to show trained agent's performance
     
@@ -78,13 +52,25 @@ def main(**kwargs):
             env = PendulumRenderFix(render_mode="human" if not args.console else None)
             # env = PendulumRenderFix()
             # env = TimeLimit(env, max_episode_steps=1000)  # Set a maximum number of steps per episode
+            # env = CALFWrapper(
+            #     env,
+            #     fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
+            #     calf_decay_rate=args.calf_decay_rate,
+            #     initial_relax_prob=args.calf_init_relax,
+            #     relax_prob_base_step_factor=args.relax_prob_base_step_factor,
+            #     relax_prob_episode_factor=args.relax_prob_episode_factor,
+            #     debug=False,
+            #     logger=loggers
+            # )
             env = CALFWrapper(
                 env,
+                relax_decay=RelaxProbExponetial(
+                    initial_relax_prob=args.calf_init_relax,
+                    relax_prob_base_step_factor=args.relax_prob_base_step_factor,
+                    relax_prob_episode_factor=args.relax_prob_episode_factor,
+                ),
+                calf_decay_rate=args.calf_decay_rate,
                 fallback_policy=CALFEnergyPendulumWrapper(EnergyBasedController()),
-                calf_decay_rate=calf_hyperparams["calf_decay_rate"],
-                initial_relax_prob=calf_hyperparams["initial_relax_prob"],
-                relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
-                relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
                 debug=False,
                 logger=loggers
             )
@@ -98,10 +84,13 @@ def main(**kwargs):
     env_agent = DummyVecEnv([make_env()])
 
     # Load the model (if needed)
-    model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    if args.loadstep:
+        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum_{args.loadstep}_steps")
+    else:
+        model = PPO.load(f"artifacts/checkpoints/ppo_pendulum")
+
     if loggers:
         model.set_logger(loggers)
-
 
     # Reset the environments
     env_agent.env_method("copy_policy_model", model.policy)
@@ -157,4 +146,12 @@ def main(**kwargs):
     print(df.tail(2))
 
 if __name__ == "__main__":
-    main()
+    args = parse_args(CALFEvalExperimentConfig, 
+                    overide_default=CALFEvalExperimentConfig(
+                        calf_init_relax=calf_hyperparams["initial_relax_prob"],
+                        calf_decay_rate=calf_hyperparams["calf_decay_rate"],
+                        relax_prob_base_step_factor=calf_hyperparams["relax_prob_base_step_factor"],
+                        relax_prob_episode_factor=calf_hyperparams["relax_prob_episode_factor"],
+                        ppo=PPOHyperparameters()
+                    ))
+    main(args)

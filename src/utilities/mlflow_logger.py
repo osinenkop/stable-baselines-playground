@@ -7,7 +7,7 @@ import sys
 from typing import Dict, Any, Tuple, Union
 
 from stable_baselines3.common.logger import HumanOutputFormat, KVWriter, Logger
-
+from dataclasses import is_dataclass, fields
 
 
 class MLflowOutputFormat(KVWriter):
@@ -34,10 +34,15 @@ class MLflowOutputFormat(KVWriter):
                     mlflow.log_metric(key, value, step)
 
 
-def get_ml_logger():
+def get_ml_logger(debug=False):
+    output_formats = [MLflowOutputFormat()]
+    if debug:
+        print("Debug is on")
+        output_formats += [HumanOutputFormat(sys.stdout)]
+
     loggers = Logger(
         folder=None,
-        output_formats=[HumanOutputFormat(sys.stdout), MLflowOutputFormat()],
+        output_formats=output_formats,
     )
     return loggers
 
@@ -53,7 +58,7 @@ def mlflow_monotoring(subfix=""):
             if len(args) == 1 and \
                     hasattr(args[0], "notrain") and \
                     args[0].notrain:
-                func(*args, **kwargs, use_mlflow=True)
+                return func(*args, **kwargs, use_mlflow=True)
             else:
                 if mlflow.active_run() is not None:
                     print("There is an active run.")
@@ -65,13 +70,20 @@ def mlflow_monotoring(subfix=""):
                     
                 mlflow.set_experiment(experiment_name)
 
-                print("run_name:", run_name)
+                print(f"experiment_name: {experiment_name} \trun_name:{run_name}")
                 with mlflow.start_run(run_name=run_name):
                     # log param
                     for key in kwargs:
                         if "hyperparams" in key and isinstance(kwargs[key], dict):
                             [mlflow.log_param(k, v) for k, v in kwargs[key].items()]
 
-                    func(*args, **kwargs, use_mlflow=True)
+                    if len(args):
+                        if is_dataclass(args[0]):
+                            [mlflow.log_param(field.name, getattr(args[0], field.name)) for field in fields(args[0])]
+                        else:
+                            args_dict = vars(args[0])
+                            [mlflow.log_param(k, args_dict[k]) for k in args_dict]
+                        
+                    return func(*args, **kwargs, use_mlflow=True)
         return inner2
     return inner1

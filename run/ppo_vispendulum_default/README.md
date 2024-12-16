@@ -22,10 +22,10 @@ python pendulum_visual_ppo.py
 The checkpoints have following formats:
 ```
 # Checkpoints stored each 1000 steps
-./artifact/checkpoints/ppo_pendulum_<step-number>_steps.zip 
+./artifacts/checkpoints/ppo_visual_pendulum_<step-number>_steps.zip 
 
 # The best checkpoint after training
-./artifact/checkpoints/ppo_pendulum.zip 
+./artifacts/checkpoints/ppo_visual_pendulum.zip 
 ```
 
 ##### Configurations
