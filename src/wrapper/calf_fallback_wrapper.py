@@ -31,9 +31,12 @@ class CALFPPOPendulumWrapper(CALFNominalWrapper):
     During initialization, the class requires the path to a checkpoint of a trained PPO model, 
     which it integrates as a fallback within the CALFWrapper structure. 
     """
-    def __init__(self, checkpoint_path, action_low, action_high, device="cuda"):
+    def __init__(self, checkpoint_path, action_low, action_high, device=None):
         self.model = PPO.load(checkpoint_path)
-        self.device = device
+        if device is None:
+            self.device = "cuda" if th.cuda.is_available() else "cpu"
+        else:
+            self.device = device
         self.action_space_low = action_low
         self.action_space_high = action_high
     
