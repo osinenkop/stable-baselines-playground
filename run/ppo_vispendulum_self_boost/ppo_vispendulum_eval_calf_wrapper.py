@@ -116,8 +116,8 @@ def main(args, **kwargs):
                 logger=loggers
             )
 
-    # Load the normalization statistics if --normalsize is used
-    if args.normalize:
+    # Load the normalization statistics if --normalize is used
+    if args.eval_normalize:
         env_agent = VecNormalize.load("./artifacts/checkpoints/vecnormalize_stats.pkl", env_agent)
         env_agent.training = False  # Set to evaluation mode
         env_agent.norm_reward = False  # Disable reward normalization for evaluation
@@ -198,6 +198,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--console", action="store_true", help="Disable graphical output for console-only mode")
     parser.add_argument("--normalize", action="store_true", help="Enable observation and reward normalization")
+    parser.add_argument("--eval-normalize", action="store_true", help="Enable observation and reward normalization for evaluation")
     parser.add_argument("--single-thread", action="store_true", help="Use DummyVecEnv for single-threaded environment")
     parser.add_argument("--loadstep", 
                         type=int,
